@@ -6,7 +6,7 @@ def setup_workspace(tmp_path):
     store.DB_PATH = tmp_path / "test.sqlite3"
     store.init_db()
     store.clear_transactions()
-    store.seed_if_empty()
+    store.seed_if_empty(force=True)
 
 def test_core_endpoints(tmp_path):
     setup_workspace(tmp_path)
@@ -145,3 +145,12 @@ def test_import_detect_review_and_report_end_to_end(tmp_path):
         report = client.get("/api/v1/reports?format=csv")
         assert report.status_code == 200
         assert b"Cloud Test Vendor" in report.content
+
+
+def test_demo_data_is_not_reseeded_after_workspace_is_cleared(tmp_path):
+    setup_workspace(tmp_path)
+    for row in store.list_transactions():
+        assert store.delete_transaction(row["id"]) is True
+    assert store.list_transactions() == []
+    store.seed_if_empty()
+    assert store.list_transactions() == []
