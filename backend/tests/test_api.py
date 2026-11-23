@@ -253,7 +253,7 @@ def test_local_backup_and_confirmed_delete_are_loopback_gated(tmp_path, monkeypa
     with TestClient(app) as client:
         backup = client.get("/api/v1/admin/backup")
         assert backup.status_code == 200
-        assert backup.content[:16] == b"SQLite format 3\\x00"
+        assert backup.content[:16] == b"SQLite format 3\x00"
         deleted = client.delete("/api/v1/admin/financial-data",
                                 params={"confirmation": "DELETE MY LEAKLENS DATA"})
         assert deleted.status_code == 200
