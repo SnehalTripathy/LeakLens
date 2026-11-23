@@ -43,7 +43,7 @@ Expanding-window rolling-origin backtest; 12-month minimum training window, up t
 | Linear trend | £329,784.35 | 42.97% |
 | Seasonal naive (12 months) | **£130,068.99** | **16.95%** |
 
-**Finding:** Seasonal-naive forecasting materially outperformed the other three baselines on this dataset. This is evidence to add a seasonal baseline to LeakLens forecasting when at least 24 monthly observations exist, while still comparing models per dataset rather than assuming one model is universally best.
+**Finding:** Seasonal-naive forecasting materially outperformed the other three baselines on this dataset. LeakLens now uses an expanding-window rolling-origin backtest to compare these baselines and selects revenue and expense methods independently by WAPE. Re-running the in-app forecast engine on this dataset reproduced the same 16.95% seasonal WAPE across 13 origins and 36 held-out predictions for revenue. Seasonal naive is eligible only when at least 24 contiguous monthly observations exist. This remains a single-retailer result, not a universal model guarantee.
 
 ## Geography insight
 
