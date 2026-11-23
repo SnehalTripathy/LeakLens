@@ -86,9 +86,10 @@ def api_root():
     return {
         "name": "LeakLens",
         "version": app.version,
-        "modules": ["transactions", "import", "overview", "expenses", "leaks", "anomalies",
-                    "forecast", "health-score", "recommendations", "simulation", "vendors",
-                    "subscriptions", "alerts", "assistant", "reports"],
+        "modules": ["transactions", "import-preview", "import", "overview", "revenue", "expenses",
+                    "period-comparison", "budgets", "data-quality", "leaks", "anomalies",
+                    "forecast", "health-score-history", "recommendations", "simulation", "vendors",
+                    "subscriptions", "alerts", "alert-history", "assistant", "reports"],
         "authentication": "disabled by product decision; intended for a single local workspace in v1.0",
     }
 
