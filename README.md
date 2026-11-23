@@ -24,7 +24,12 @@ LeakLens is a financial intelligence workspace for business transaction analysis
 - Alert lifecycle with reopen and status history.
 - Data-grounded assistant, data-quality checks and CSV/PDF reports.
 
-## Public dataset research\n- Reproducible UCI Online Retail II cleaning, monthly/country/invoice aggregation and rolling-origin revenue forecast benchmarking: [`docs/PUBLIC_DATASET_STUDY.md`](docs/PUBLIC_DATASET_STUDY.md).\n- Raw public data is downloaded locally and excluded from Git; no source workbook or derived customer-level raw rows are committed.\n\n## Local QA and sample import
+## Public dataset research
+- Reproducible UCI Online Retail II cleaning, monthly/country/invoice aggregation and rolling-origin revenue forecast benchmarking: [`docs/PUBLIC_DATASET_STUDY.md`](docs/PUBLIC_DATASET_STUDY.md).
+- Actual full-workbook results and forecast model comparison: [`docs/UCI_ONLINE_RETAIL_II_RESULTS.md`](docs/UCI_ONLINE_RETAIL_II_RESULTS.md).
+- Raw public data is downloaded locally and excluded from Git; only aggregated monthly/country outputs and non-identifying benchmark metrics are committed.
+
+## Local QA and sample import
 - Sample import file: [`samples/sample-transactions.csv`](samples/sample-transactions.csv)
 - Manual browser, responsive, import, alert, report and persistence checks: [`docs/LOCAL_QA_CHECKLIST.md`](docs/LOCAL_QA_CHECKLIST.md)
 
