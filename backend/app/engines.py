@@ -382,7 +382,7 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
     if len(months) < 4:
         return {"available": False, "reason": "At least four distinct months of transactions are required.",
                 "history": [], "forecast": [], "model": "Linear trend baseline"}
-    # Fill missing months with zeros to preserve a continuous monthly series.
+    # Fill missing calendar months with zero so lags and seasonality retain their meaning.
     start, end = pd.Period(months[0], "M"), pd.Period(months[-1], "M")
     periods = [str(p) for p in pd.period_range(start, end, freq="M")]
     series = {metric: np.array([monthly.get(p, {}).get(metric, 0.0) for p in periods], dtype=float)
@@ -391,39 +391,71 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
     history = [{"month": _fmt_month(p), "period": p, "income": round(float(series["income"][i]), 2),
                 "expenses": round(float(series["expenses"][i]), 2)}
                for i, p in enumerate(periods)]
+    horizon = max(1, min(int(horizon), 3))
     forecast_rows = []
-    errors = []
-    naive_errors = []
-    backtest_by_metric = {}
+    errors: list[float] = []
+    naive_errors: list[float] = []
+    backtest_by_metric: dict[str, Any] = {}
+    selected_models: dict[str, str] = {}
     backtest_period_count = 0
+
     for metric in ("income", "expenses"):
         y = series[metric]
-        if len(y) >= 6:
-            split = len(y) - 2
-            coef = np.polyfit(x[:split], y[:split], 1)
-            validation = np.maximum(0.0, np.polyval(coef, x[split:]))
-            actual = y[split:]
-            naive = np.repeat(y[split - 1], len(actual))
-            trend_err = np.abs(validation - actual)
-            naive_err = np.abs(naive - actual)
-            errors.extend(trend_err.tolist())
-            naive_errors.extend(naive_err.tolist())
-            backtest_period_count = max(backtest_period_count, len(actual))
-            trend_mae = float(np.mean(trend_err))
-            naive_mae = float(np.mean(naive_err))
-            backtest_by_metric[metric] = {
-                "trend_mae": round(trend_mae, 2),
-                "naive_mae": round(naive_mae, 2),
-                "improvement_pct": round((naive_mae - trend_mae) / naive_mae * 100, 1) if naive_mae else None,
+        split = len(y) - 2
+        candidates: dict[str, np.ndarray] = {}
+        if split >= 4:
+            trend_coef = np.polyfit(x[:split], y[:split], 1)
+            candidates["linear_trend"] = np.maximum(0.0, np.polyval(trend_coef, x[split:]))
+            candidates["last_value"] = np.repeat(y[split - 1], len(y) - split)
+            candidates["moving_average_3"] = np.repeat(float(np.mean(y[max(0, split - 3):split])), len(y) - split)
+            if len(y) >= 24 and split >= 12:
+                candidates["seasonal_naive_12"] = np.asarray([y[i - 12] for i in range(split, len(y))], dtype=float)
+        actual = y[split:]
+        scores: dict[str, dict[str, float]] = {}
+        for name, prediction in candidates.items():
+            absolute = np.abs(prediction - actual)
+            denom = float(np.abs(actual).sum())
+            scores[name] = {
+                "mae": float(np.mean(absolute)),
+                "wape_pct": float(absolute.sum() / denom * 100) if denom else 0.0,
             }
-    for step in range(1, max(1, min(int(horizon), 3)) + 1):
+        chosen = min(scores, key=lambda name: (scores[name]["wape_pct"], scores[name]["mae"])) if scores else "linear_trend"
+        selected_models[metric] = chosen
+        if "linear_trend" in scores:
+            errors.extend(np.abs(candidates["linear_trend"] - actual).tolist())
+            naive_errors.extend(np.abs(candidates["last_value"] - actual).tolist())
+            backtest_period_count = max(backtest_period_count, len(actual))
+        backtest_by_metric[metric] = {
+            **{f"{name}_mae": round(value["mae"], 2) for name, value in scores.items()},
+            **{f"{name}_wape_pct": round(value["wape_pct"], 2) for name, value in scores.items()},
+            "selected_model": chosen,
+        }
+
+    model_labels = {
+        "linear_trend": "Linear trend baseline",
+        "last_value": "Last-observation baseline",
+        "moving_average_3": "Trailing 3-month average",
+        "seasonal_naive_12": "Seasonal naive (12-month)",
+    }
+    for step in range(1, horizon + 1):
         target_index = len(periods) - 1 + step
         future: dict[str, Any] = {"step": step}
         for metric in ("income", "expenses"):
             y = series[metric]
-            coef = np.polyfit(x, y, 1)
-            prediction = max(0.0, float(np.polyval(coef, target_index)))
-            residual = y - np.polyval(coef, x)
+            chosen = selected_models[metric]
+            if chosen == "seasonal_naive_12" and len(y) >= 12:
+                prediction = max(0.0, float(y[target_index - 12]))
+                residual = y[12:] - y[:-12]
+            elif chosen == "last_value":
+                prediction = max(0.0, float(y[-1]))
+                residual = y[1:] - y[:-1]
+            elif chosen == "moving_average_3":
+                prediction = max(0.0, float(np.mean(y[-3:])))
+                residual = y[3:] - np.convolve(y, np.ones(3) / 3, mode="valid")
+            else:
+                coef = np.polyfit(x, y, 1)
+                prediction = max(0.0, float(np.polyval(coef, target_index)))
+                residual = y - np.polyval(coef, x)
             spread = float(np.std(residual, ddof=1)) if len(residual) > 1 else 0.0
             band = spread * (1.0 + 0.25 * step)
             future[metric] = round(prediction, 2)
@@ -433,18 +465,21 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
         period = pd.Period(periods[-1], "M") + step
         future["month"] = period.strftime("%b %Y")
         forecast_rows.append(future)
+
     mae = float(np.mean(errors)) if errors else None
     naive_mae = float(np.mean(naive_errors)) if naive_errors else None
-    return {"available": True, "model": "Linear trend baseline", "history": history, "forecast": forecast_rows,
+    overall = max(set(selected_models.values()), key=list(selected_models.values()).count)
+    return {"available": True, "model": model_labels[overall], "selected_model_by_metric": selected_models,
+            "history": history, "forecast": forecast_rows,
             "backtest_mae": round(mae, 2) if mae is not None else None,
             "backtest_naive_mae": round(naive_mae, 2) if naive_mae is not None else None,
             "backtest_improvement_pct": round((naive_mae - mae) / naive_mae * 100, 1) if naive_mae and mae is not None else None,
             "backtest_periods": backtest_period_count,
             "backtest_observations": len(errors),
             "backtest_by_metric": backtest_by_metric,
-            "backtest_method": "The final two observed months are held out; a linear trend is compared with a last-observation naive forecast, separately for revenue and expenses.",
-            "uncertainty": "Bands use historical residual dispersion and widen with horizon; they are indicative, not calibrated confidence intervals.",
-            "minimum_data": "Four distinct months for forecasting; at least six contiguous months for held-out two-step backtesting."}
+            "backtest_method": "Final two observed months are held out. Linear trend, last-value and trailing-three-month baselines are compared; a 12-month seasonal-naive model is eligible only with at least 24 contiguous months. The lowest WAPE model is selected separately for revenue and expenses.",
+            "uncertainty": "Bands use residual dispersion from the selected model and widen with horizon; they are indicative, not calibrated confidence intervals.",
+            "minimum_data": "Four distinct months for forecasting; at least six contiguous months for held-out two-step backtesting; seasonal naive requires 24 contiguous months."}
 
 
 def health_score(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> dict[str, Any]:
