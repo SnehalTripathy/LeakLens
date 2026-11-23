@@ -311,8 +311,11 @@ def alert_history(alert_id: str):
 
 @app.patch("/api/v1/alerts/{alert_id}", tags=["intelligence"])
 def set_alert_status(alert_id: str, payload: AlertStatusInput):
-    valid_ids = {s["id"] for s in _signals()}
-    if not (alert_id in valid_ids or alert_id.startswith("ml-")):
+    rows = _rows()
+    valid_rule_ids = {s["id"] for s in _signals(rows)}
+    anomaly = anomaly_detection(rows)
+    valid_ml_ids = {f"ml-{item['transaction']['id']}" for item in anomaly.get("results", [])}
+    if alert_id not in valid_rule_ids and alert_id not in valid_ml_ids:
         raise HTTPException(status_code=404, detail="Alert not found.")
     store.update_alert_status(alert_id, payload.status)
     return {"id": alert_id, "status": payload.status}
