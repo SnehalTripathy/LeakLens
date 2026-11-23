@@ -558,6 +558,15 @@ async def restore_local_backup(request: Request, confirmation: str, file: Upload
     return {"restored": True, "transaction_count": len(_rows())}
 
 
+
+@app.post("/api/v1/admin/retention/apply", tags=["privacy"])
+def apply_local_retention(request: Request, confirmation: str):
+    _require_local_admin(request)
+    if confirmation != "APPLY LEAKLENS RETENTION":
+        raise HTTPException(status_code=400, detail="Retention confirmation phrase did not match.")
+    return store.apply_retention_policy()
+
+
 @app.delete("/api/v1/admin/financial-data", tags=["privacy"])
 def delete_local_financial_data(request: Request, confirmation: str):
     _require_local_admin(request)
