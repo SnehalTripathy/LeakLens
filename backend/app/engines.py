@@ -367,15 +367,29 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
                for i, p in enumerate(periods)]
     forecast_rows = []
     errors = []
+    naive_errors = []
+    backtest_by_metric = {}
+    backtest_period_count = 0
     for metric in ("income", "expenses"):
         y = series[metric]
         if len(y) >= 6:
             split = len(y) - 2
             coef = np.polyfit(x[:split], y[:split], 1)
-            validation = np.polyval(coef, x[split:])
-            errors.extend(np.abs(validation - y[split:]).tolist())
-        else:
-            errors.extend([])
+            validation = np.maximum(0.0, np.polyval(coef, x[split:]))
+            actual = y[split:]
+            naive = np.repeat(y[split - 1], len(actual))
+            trend_err = np.abs(validation - actual)
+            naive_err = np.abs(naive - actual)
+            errors.extend(trend_err.tolist())
+            naive_errors.extend(naive_err.tolist())
+            backtest_period_count = max(backtest_period_count, len(actual))
+            trend_mae = float(np.mean(trend_err))
+            naive_mae = float(np.mean(naive_err))
+            backtest_by_metric[metric] = {
+                "trend_mae": round(trend_mae, 2),
+                "naive_mae": round(naive_mae, 2),
+                "improvement_pct": round((naive_mae - trend_mae) / naive_mae * 100, 1) if naive_mae else None,
+            }
     for step in range(1, max(1, min(int(horizon), 3)) + 1):
         target_index = len(periods) - 1 + step
         future: dict[str, Any] = {"step": step}
@@ -394,11 +408,17 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
         future["month"] = period.strftime("%b %Y")
         forecast_rows.append(future)
     mae = float(np.mean(errors)) if errors else None
+    naive_mae = float(np.mean(naive_errors)) if naive_errors else None
     return {"available": True, "model": "Linear trend baseline", "history": history, "forecast": forecast_rows,
             "backtest_mae": round(mae, 2) if mae is not None else None,
-            "backtest_periods": len(errors),
+            "backtest_naive_mae": round(naive_mae, 2) if naive_mae is not None else None,
+            "backtest_improvement_pct": round((naive_mae - mae) / naive_mae * 100, 1) if naive_mae and mae is not None else None,
+            "backtest_periods": backtest_period_count,
+            "backtest_observations": len(errors),
+            "backtest_by_metric": backtest_by_metric,
+            "backtest_method": "The final two observed months are held out; a linear trend is compared with a last-observation naive forecast, separately for revenue and expenses.",
             "uncertainty": "Bands use historical residual dispersion and widen with horizon; they are indicative, not calibrated confidence intervals.",
-            "minimum_data": "Four distinct months; more history improves stability."}
+            "minimum_data": "Four distinct months for forecasting; at least six contiguous months for held-out two-step backtesting."}
 
 
 def health_score(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> dict[str, Any]:
