@@ -57,6 +57,15 @@ def init_db() -> None:
         db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_vendor ON transactions(vendor)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)")
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS budgets (
+                category TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                monthly_amount REAL NOT NULL CHECK(monthly_amount >= 0),
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(category, currency)
+            )
+        """)
 
 
 def _seed_rows() -> list[dict[str, Any]]:
@@ -159,3 +168,39 @@ def get_alert_states() -> dict[str, str]:
     with connect() as db:
         rows = db.execute("SELECT alert_id,status FROM alert_states").fetchall()
     return {row["alert_id"]: row["status"] for row in rows}
+
+def delete_transaction(transaction_id: str) -> bool:
+    with connect() as db:
+        result = db.execute("DELETE FROM transactions WHERE id=?", (transaction_id,))
+    return result.rowcount > 0
+
+
+def update_transaction(transaction_id: str, row: dict[str, Any]) -> bool:
+    clean = dict(row)
+    clean.setdefault("currency", "USD")
+    clean.setdefault("source", "manual")
+    fp = fingerprint(clean)
+    with connect() as db:
+        try:
+            result = db.execute("""
+                UPDATE transactions SET fingerprint=?,date=?,description=?,vendor=?,category=?,
+                    amount=?,type=?,currency=?,source=? WHERE id=?
+            """, (fp, clean["date"], clean["description"], clean["vendor"], clean["category"],
+                  float(clean["amount"]), clean["type"], clean["currency"], clean["source"], transaction_id))
+        except sqlite3.IntegrityError:
+            return False
+    return result.rowcount > 0
+
+
+def get_budgets() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT category,currency,monthly_amount,updated_at FROM budgets ORDER BY category").fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_budget(category: str, currency: str, monthly_amount: float) -> None:
+    with connect() as db:
+        db.execute("""
+            INSERT INTO budgets(category,currency,monthly_amount,updated_at) VALUES(?,?,?,?)
+            ON CONFLICT(category,currency) DO UPDATE SET monthly_amount=excluded.monthly_amount,updated_at=excluded.updated_at
+        """, (category, currency, monthly_amount, datetime.now().astimezone().isoformat()))
