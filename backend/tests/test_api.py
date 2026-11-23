@@ -172,3 +172,89 @@ def test_create_transaction_returns_created_row_when_backdated(tmp_path):
         assert result.status_code == 200
         assert result.json()["transaction"]["description"] == "Backdated opening balance"
         assert result.json()["transaction"]["date"] == "2026-01-01"
+
+
+def test_accounting_settings_branch_and_chart_of_accounts(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        payload = {
+            "date": "2026-11-15", "service_date": "2026-10-31",
+            "description": "East branch consulting", "vendor": "East Client",
+            "category": "Sales", "amount": 1250, "type": "income", "currency": "USD",
+            "branch": "East", "account_code": "4000", "account_name": "Consulting Revenue"
+        }
+        created = client.post("/api/v1/transactions", json=payload)
+        assert created.status_code == 200
+        row = created.json()["transaction"]
+        assert row["branch"] == "East"
+        assert row["account_code"] == "4000"
+        assert row["service_date"] == "2026-10-31"
+
+        saved = client.put("/api/v1/settings", json={
+            "accounting_basis": "accrual", "fiscal_year_start_month": 4,
+            "default_currency": "INR", "retention_days": 365, "timezone": "Asia/Kolkata"
+        })
+        assert saved.status_code == 200
+        assert saved.json()["accounting_basis"] == "accrual"
+        assert saved.json()["fiscal_year_start_month"] == 4
+
+        branches = client.get("/api/v1/branches").json()["branches"]
+        assert any(item["branch"] == "East" and item["revenue"] == 1250 for item in branches)
+        accounts = client.get("/api/v1/chart-of-accounts").json()["accounts"]
+        assert any(item["account_code"] == "4000" and item["income"] == 1250 for item in accounts)
+        fiscal = client.get("/api/v1/fiscal-year").json()
+        assert fiscal["start_date"] == "2026-04-01"
+        assert fiscal["summary"]["revenue"] >= 1250
+
+
+def test_alert_feedback_metrics_are_not_misrepresented_as_recall(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        signals = client.get("/api/v1/leaks").json()["signals"]
+        assert signals
+        alert_id = signals[0]["id"]
+        saved = client.post(f"/api/v1/alerts/{alert_id}/feedback",
+                            json={"classification": "false_positive", "notes": "Verified against invoice."})
+        assert saved.status_code == 200
+        metrics = client.get("/api/v1/alert-feedback/metrics").json()
+        assert metrics["counts"]["false_positive"] == 1
+        assert metrics["observed_precision_pct"] == 0
+        assert metrics["recall_pct"] is None
+        assert "unflagged transactions" in metrics["recall_note"]
+
+
+def test_subscription_contract_comparison_is_evidence_qualified(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        saved = client.post("/api/v1/subscription-contracts", json={
+            "vendor": "WorkSuite Pro", "expected_amount": 189, "currency": "USD",
+            "cadence": "monthly", "reference": "SYNTHETIC-CONTRACT-REF"
+        })
+        assert saved.status_code == 200
+        comparison = client.get("/api/v1/subscription-contracts/comparison").json()
+        item = next(x for x in comparison["comparisons"] if x["vendor"] == "WorkSuite Pro")
+        assert item["expected_monthly"] == 189
+        assert item["observed_recurring_amount"] is not None
+        assert "does not verify usage" in comparison["note"]
+
+
+def test_privacy_admin_endpoints_are_disabled_by_default(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        assert client.get("/api/v1/privacy").json()["deployment_safe"] is False
+        assert client.get("/api/v1/admin/backup").status_code == 403
+        assert client.delete("/api/v1/admin/financial-data",
+                             params={"confirmation": "DELETE MY LEAKLENS DATA"}).status_code == 403
+
+
+def test_local_backup_and_confirmed_delete_are_loopback_gated(tmp_path, monkeypatch):
+    setup_workspace(tmp_path)
+    monkeypatch.setenv("LEAKLENS_ENABLE_LOCAL_ADMIN", "true")
+    with TestClient(app) as client:
+        backup = client.get("/api/v1/admin/backup")
+        assert backup.status_code == 200
+        assert backup.content[:16] == b"SQLite format 3\\x00"
+        deleted = client.delete("/api/v1/admin/financial-data",
+                                params={"confirmation": "DELETE MY LEAKLENS DATA"})
+        assert deleted.status_code == 200
+        assert client.get("/api/v1/transactions").json()["count"] == 0
