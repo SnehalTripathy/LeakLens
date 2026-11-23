@@ -303,11 +303,27 @@ def anomaly_detection(rows: list[dict[str, Any]]) -> dict[str, Any]:
         raw = -model.score_samples(x)
         ranks = pd.Series(raw).rank(pct=True).to_numpy()
         results = []
+        amount_values = np.array([r["amount"] for r in expenses], dtype=float)
+        amount_median = float(np.median(amount_values))
+        day_counts = Counter(pd.to_datetime(r["date"]).day for r in expenses)
         for row, score in zip(expenses, ranks):
             if score >= 0.88:
                 severity = "high" if score >= 0.97 else "medium"
+                factors = []
+                if amount_median > 0 and row["amount"] >= amount_median * 1.8:
+                    factors.append(f"Amount is {row['amount'] / amount_median:.1f}× the median expense amount.")
+                if vendors[row["vendor"]] <= 2:
+                    factors.append("Vendor has very few observations in the current ledger.")
+                if categories[row["category"]] <= 3:
+                    factors.append("Category has a relatively small sample in the modelled ledger.")
+                day = pd.to_datetime(row["date"]).day
+                if day_counts[day] <= max(1, len(expenses) * 0.03):
+                    factors.append("Transaction day-of-month is uncommon in this dataset.")
+                explanation = " ".join(factors) or "The combination of amount, timing and vendor/category frequency differs from the modelled transaction pattern."
                 results.append({"transaction": row, "score": round(float(score * 100), 1), "severity": severity,
-                                "explanation": f"Amount, timing and vendor/category frequency jointly differ from the modelled transaction pattern.",
+                                "explanation": explanation,
+                                "contextual_checks": factors,
+                                "score_interpretation": "Percentile ranking within this workspace's current expense sample; not a probability of fraud.",
                                 "model": "Isolation Forest"})
         return {"available": True, "model": "Isolation Forest", "sample_size": len(expenses),
                 "flagged_count": len(results), "results": sorted(results, key=lambda x: x["score"], reverse=True)[:30],
@@ -399,7 +415,7 @@ def health_score(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> d
             "methodology": "Weighted transparent index. Scores are directional indicators, not credit ratings or audited financial advice."}
 
 
-def recommendations(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def recommendations(rows: list[dict[str, Any]], signals: list[dict[str, Any]], budgets: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     out = []
     for signal in signals[:10]:
         exposure = signal["estimated_exposure"]
@@ -407,6 +423,18 @@ def recommendations(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -
                     "action": f"Check the source transactions for {signal['subject']}; verify the invoice, service period and approval before changing spend.",
                     "evidence": signal["detail"], "potential_savings": round(exposure, 2),
                     "savings_type": "estimated exposure; not guaranteed savings", "source_signal_id": signal["id"]})
+    current_period = date.today().strftime("%Y-%m")
+    for budget in budgets or []:
+        if budget.get("currency", "USD") != (rows[0].get("currency", "USD") if rows else "USD"):
+            continue
+        actual = sum(r["amount"] for r in rows if r["type"] == "expense" and r["category"] == budget["category"] and _month_key(r["date"]) == current_period)
+        limit = float(budget["monthly_amount"])
+        if limit > 0 and actual > limit:
+            over = actual - limit
+            out.append({"id": f"rec-budget-{budget['category']}", "priority": "high", "title": f"{budget['category']} budget exceeded",
+                        "action": "Review recent transactions in this category, confirm one-off costs and agree a corrective spend plan.",
+                        "evidence": f"Month-to-date actual is {actual:.2f}, exceeding the {limit:.2f} monthly budget by {over:.2f}.",
+                        "potential_savings": round(over, 2), "savings_type": "budget overrun; not guaranteed savings"})
     exp = [r for r in rows if r["type"] == "expense"]
     if exp:
         by_vendor = _group(exp, "vendor")
