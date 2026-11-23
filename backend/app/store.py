@@ -253,9 +253,9 @@ def get_alert_history(alert_id: str) -> list[dict[str, Any]]:
     with connect() as db:
         rows = db.execute("""
             SELECT status,updated_at FROM alert_status_history
-            WHERE alert_id=? ORDER BY updated_at DESC LIMIT 100
+            WHERE alert_id=? ORDER BY updated_at DESC, id DESC LIMIT 100
         """, (alert_id,)).fetchall()
-    return [{"status": row["status"], "updated_at": row["updated_at"]} for row in rows]
+    return [{"status": row["status"], "updated_at": row["updated_at"]} for row in reversed(rows)]
 
 
 def existing_fingerprints() -> set[str]:
