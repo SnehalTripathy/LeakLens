@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
+# Avoid spending CI capacity on stale commits when several changes are pushed in sequence.
+concurrency:
+  group: leaklens-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   backend:
     runs-on: ubuntu-latest
