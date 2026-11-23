@@ -151,3 +151,22 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .toolbar .search{min-width:220px}
 .anomaly-score small+small{font-size:7px;color:#8b8f82;white-space:nowrap}
 @media(max-width:780px){.date-filter{flex:1;justify-content:space-between}.date-filter input{width:130px}}
+
+
+.health-history-chart{height:220px;margin-top:14px}
+.import-modal{width:min(920px,100%);max-height:92vh;overflow:auto;background:#151714;border:1px solid #414638;border-radius:12px;padding:21px;box-shadow:0 25px 90px #0009}
+.import-modal .modal-heading{margin-bottom:16px}
+.import-modal .modal-heading p{font-size:9px;color:#9da195;margin:5px 0 0}
+.import-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:17px}
+.import-stats>div{padding:12px;border:1px solid #33372d;background:#1a1d17;border-radius:8px;display:flex;flex-direction:column;gap:5px}
+.import-stats b{font:600 20px 'Space Grotesk';color:#C6F432}
+.import-stats small{font:8px 'DM Mono';color:#93998a;letter-spacing:.6px}
+.import-columns{padding:12px 0;border-block:1px solid #2b3027}
+.import-columns>b,.import-preview-table>b{font-size:10px;color:#eff1e9}
+.import-columns p{font-size:9px;line-height:1.55;color:#a2a795;overflow-wrap:anywhere;margin:6px 0 0}
+.import-preview-table{margin-top:14px}
+.import-preview-table .table-scroll{margin-top:6px}
+.import-errors{margin-top:12px;color:#FFB84D;font-size:9px}
+.import-errors summary{cursor:pointer}
+.import-errors pre{max-height:160px;overflow:auto;white-space:pre-wrap;background:#0b0b0c;border:1px solid #3a3021;border-radius:7px;padding:10px;color:#d9c6a0;font-size:8px}
+@media(max-width:550px){.import-stats{grid-template-columns:repeat(2,1fr)}.import-modal{padding:14px}.import-preview-table table{min-width:700px}}
