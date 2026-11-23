@@ -75,9 +75,10 @@
 - [x] Held-out backtest MAE when enough months exist.
 - [x] Indicative residual bands and insufficient-history state.
 - [x] What-if revenue/expense/one-off-cost scenario simulator.
-- [x] Linear trend model compared with last-observation naive baseline; revenue/expense MAE and held-out month counts are returned separately.
-- [ ] Compare seasonal and additional forecasting methods; validate performance across multiple real business datasets.
-- [ ] Validate forecast stability across multiple real businesses and seasonal periods.
+- [x] Compare linear trend, last-value, trailing-three-month and 12-month seasonal-naive models on a real public retail dataset using expanding-window rolling-origin backtests.
+- [x] Add conditional seasonal-naive eligibility to LeakLens forecasts (requires at least 24 contiguous months); select revenue and expense methods separately by held-out WAPE and use selected-model residuals for indicative bands.
+- [x] Validate pipeline against full UCI Online Retail II workbook (1,067,371 source lines; 1,061,164 retained; 25 calendar months); seasonal naive achieved 16.95% WAPE versus 39.86% last-value, 41.57% moving average and 42.97% linear trend.
+- [ ] Validate forecast stability across multiple real businesses and seasonal periods; this public benchmark is one retailer only.
 
 ## P6 — Business health and recommendations
 - [x] Transparent weighted health score with six explained dimensions.
@@ -91,7 +92,8 @@
 - [x] Vendor concentration and cost analysis.
 - [x] Recurring payment/subscription inference.
 - [x] Month-to-month financial comparison.
-- [x] Add customer-country revenue aggregation on UCI Online Retail II as a geography benchmark; explicitly not presented as branch comparisons.\n- [ ] Branch comparisons (requires actual branch/location identifiers in uploaded data).
+- [x] Add customer-country revenue aggregation on UCI Online Retail II as a geography benchmark; explicitly not presented as branch comparisons.
+- [ ] Branch comparisons (requires actual branch/location identifiers in uploaded data).
 - [ ] External industry benchmarking (only after a credible, licensed benchmark dataset is selected).
 - [ ] Subscription usage/contract verification (requires usage, invoice or contract evidence).
 
@@ -122,14 +124,21 @@
 - [x] Backend end-to-end integration test for import → detect → review → report.
 - [x] Deterministic financial-engine unit tests and frontend navigation coverage for all workspace modules.
 - [x] Local QA checklist and sample import ledger are documented.
-- [x] Add unit coverage for public-dataset cleaning, cancellation/refund arithmetic, country/month/invoice aggregation and rolling-origin forecast evaluation.\n- [ ] Run full UCI dataset pipeline and preserve benchmark result artifacts outside the raw-data repository.\n- [x] Add automated tests for public-dataset processing and seasonal model eligibility/selection (15 focused engine + dataset tests passed in the isolated research environment).\n- [ ] Add full browser end-to-end tests for import → detect → review → report.
+- [x] Add unit coverage for public-dataset cleaning, cancellation/refund arithmetic, country/month/invoice aggregation and rolling-origin forecast evaluation.
+- [x] Run full UCI dataset pipeline and preserve aggregated benchmark result artifacts; raw workbook and customer/invoice-level records are excluded from Git.
+- [x] Add automated tests for public-dataset processing and seasonal model eligibility/selection (15 focused engine + dataset tests passed in the isolated research environment).
+- [ ] Add full browser end-to-end tests for import → detect → review → report.
 - [ ] Add automated accessibility and performance checks.
 - [ ] Review business-data privacy, backup/restore, retention and deletion policies.
 - [ ] Select production persistence (managed PostgreSQL or an approved alternative); SQLite currently targets local development.
 - [ ] Complete manual regression, screenshots, release notes and final technical documentation.
 - **Release gate:** Do not mark v1.0 production-ready until the pending P10 checks are complete.
 
-## Public dataset research reference\n- UCI Online Retail II (Chen, 2012), DOI 10.24432/C5CG6D, CC BY 4.0. Full workbook processed: 1,067,371 source invoice lines; 1,061,164 retained; 25 months; 43 countries; 48,369 invoices. See `docs/PUBLIC_DATASET_STUDY.md` and `docs/UCI_ONLINE_RETAIL_II_RESULTS.md`.\n- Scope boundary: sales, refunds, invoice/customer/country data only; no expenses, supplier costs, branch identifiers or fraud labels.\n\n## P11 — Deployment (last step only)
+## Public dataset research reference
+- UCI Online Retail II (Chen, 2012), DOI 10.24432/C5CG6D, CC BY 4.0. Full workbook processed: 1,067,371 source invoice lines; 1,061,164 retained; 25 months; 43 countries; 48,369 invoices. See `docs/PUBLIC_DATASET_STUDY.md` and `docs/UCI_ONLINE_RETAIL_II_RESULTS.md`.
+- Scope boundary: sales, refunds, invoice/customer/country data only; no expenses, supplier costs, branch identifiers or fraud labels.
+
+## P11 — Deployment (last step only)
 - [ ] User approves deployment architecture and the no-login data-access model.
 - [ ] Choose between a read-only public demo or a private/isolated workspace model. A public unauthenticated API with persistent financial uploads would expose one shared workspace and is unsafe to launch as-is.
 - [ ] Deploy FastAPI backend to Python-capable hosting with persistent database storage.
@@ -142,4 +151,5 @@ No third-party API key is required for the current local feature set. A producti
 
 ## Progress log
 - 2026-11-23: Implemented the core v1 feature set, import preview, sample data, duplicate-payment signals, alert/health histories, naive forecast benchmark and local seed persistence guard. Backend suite reached 20 passing tests; frontend tests/build and strict npm/Python audits passed. Manual browser/accessibility QA, real-world model tuning, production persistence and the no-login deployment decision remain.
-\n- 2026-11-23: Added UCI Online Retail II public-dataset research pipeline and tests. Full workbook execution remains pending because the dataset must be downloaded in a network-enabled local environment; no fabricated benchmark metrics are recorded.\n\n- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook in an isolated research runtime; committed non-identifying aggregated outputs and benchmark results. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added seasonal model selection to the app and focused regression tests. Raw workbook and customer/invoice-level rows were not committed.\n
+
+- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook in an isolated research runtime; committed non-identifying aggregated outputs and benchmark results. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added seasonal model selection to the app and focused regression tests. Raw workbook and customer/invoice-level rows were not committed.
