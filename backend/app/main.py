@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 
 from . import store
 from .engines import (anomaly_detection, assistant_answer, expense_intelligence, forecast,
-                      health_score, leak_signals, overview, parse_upload, recommendations, simulate)
+                      health_score, leak_signals, overview, parse_upload, recommendations, simulate,
+                      revenue_intelligence, budget_performance, period_comparison, data_quality)
 
 app = FastAPI(
     title="LeakLens API",
@@ -35,6 +36,12 @@ class TransactionInput(BaseModel):
     category: str = Field(default="Uncategorised", max_length=100)
     amount: float = Field(gt=0, allow_inf_nan=False)
     type: Literal["income", "expense"]
+    currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
+
+
+class BudgetInput(BaseModel):
+    category: str = Field(min_length=1, max_length=100)
+    monthly_amount: float = Field(ge=0, allow_inf_nan=False)
     currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
 
 
@@ -113,12 +120,25 @@ def create_transaction(payload: TransactionInput):
     return {"created": True, "transaction": store.list_transactions()[0]}
 
 
+@app.put("/api/v1/transactions/{transaction_id}", tags=["transactions"])
+def edit_transaction(transaction_id: str, payload: TransactionInput):
+    try:
+        parsed = datetime.fromisoformat(payload.date).date().isoformat()
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Date must use ISO format YYYY-MM-DD.") from exc
+    if not any(r["id"] == transaction_id for r in _rows()):
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+    row = payload.model_dump()
+    row["date"] = parsed
+    row["source"] = "manual"
+    if not store.update_transaction(transaction_id, row):
+        raise HTTPException(status_code=409, detail="The edited transaction duplicates another ledger row.")
+    return {"updated": True, "id": transaction_id}
+
+
 @app.delete("/api/v1/transactions/{transaction_id}", tags=["transactions"])
 def delete_transaction(transaction_id: str):
-    from .store import connect
-    with connect() as db:
-        result = db.execute("DELETE FROM transactions WHERE id=?", (transaction_id,))
-    if result.rowcount == 0:
+    if not store.delete_transaction(transaction_id):
         raise HTTPException(status_code=404, detail="Transaction not found.")
     return {"deleted": True, "id": transaction_id}
 
@@ -150,6 +170,32 @@ def get_overview():
 @app.get("/api/v1/expenses", tags=["analytics"])
 def get_expenses():
     return expense_intelligence(_rows())
+
+
+@app.get("/api/v1/revenue", tags=["analytics"])
+def get_revenue():
+    return revenue_intelligence(_rows())
+
+
+@app.get("/api/v1/comparison", tags=["analytics"])
+def get_period_comparison():
+    return period_comparison(_rows())
+
+
+@app.get("/api/v1/data-quality", tags=["data"])
+def get_data_quality():
+    return data_quality(_rows())
+
+
+@app.get("/api/v1/budgets", tags=["analytics"])
+def get_budgets():
+    return budget_performance(_rows(), store.get_budgets())
+
+
+@app.put("/api/v1/budgets", tags=["analytics"])
+def put_budget(payload: BudgetInput):
+    store.set_budget(payload.category.strip(), payload.currency.upper(), payload.monthly_amount)
+    return get_budgets()
 
 
 @app.get("/api/v1/leaks", tags=["intelligence"])
