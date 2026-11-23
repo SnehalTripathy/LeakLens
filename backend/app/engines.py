@@ -494,7 +494,7 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
             "backtest_naive_mae": round(naive_mae, 2) if naive_mae is not None else None,
             "backtest_improvement_pct": round((naive_mae - trend_mae) / naive_mae * 100, 1) if naive_mae and trend_mae is not None else None,
             "backtest_periods": total_origins,
-            "backtest_observations": total_predictions * 2,
+            "backtest_observations": total_predictions,
             "backtest_by_metric": backtest_by_metric,
             "backtest_method": "Expanding-window rolling-origin backtest; minimum 12 training months when available; maximum 3-month horizon. Linear trend, last-value and trailing-three-month baselines are compared, with a 12-month seasonal-naive model eligible only after 24 contiguous months. Revenue and expenses select methods separately by WAPE.",
             "uncertainty": "Bands use residual dispersion from the selected model and widen with horizon; they are indicative, not calibrated confidence intervals.",
