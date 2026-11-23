@@ -103,7 +103,7 @@ def main() -> None:
             page.goto(WEB_URL, wait_until="networkidle")
             page.keyboard.press("Tab")
             assert page.evaluate("document.activeElement && document.activeElement.tagName !== 'BODY'")
-            axe_path = ROOT / "frontend" / "node_modules" / "axe-core" / "axe.min.js"
+            axe_path = Path(os.environ.get("AXE_CORE_PATH", str(ROOT / "frontend" / "node_modules" / "axe-core" / "axe.min.js")))
             page.add_script_tag(path=str(axe_path))
             axe = page.evaluate("""async () => {
               const result = await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a','wcag2aa','wcag21a','wcag21aa']}});
