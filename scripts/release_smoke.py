@@ -67,7 +67,7 @@ def main() -> None:
         wait_for(API_URL + "/health", api)
         wait_for(WEB_URL, web)
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser = playwright.chromium.launch(channel="chrome", headless=True, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1440, "height": 960})
             page_errors: list[str] = []
             page.on("pageerror", lambda error: page_errors.append(str(error)))
