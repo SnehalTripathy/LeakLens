@@ -44,7 +44,9 @@ export default function App() {
   const [typeFilter,setTypeFilter] = useState('all');
   const [mobileOpen,setMobileOpen] = useState(false);
   const [showAdd,setShowAdd] = useState(false);
-  const [editingTx,setEditingTx] = useState<any>(null);\n  const [budgetCategory,setBudgetCategory] = useState('Marketing');\n  const [budgetAmount,setBudgetAmount] = useState('');
+  const [editingTx,setEditingTx] = useState<any>(null);
+  const [budgetCategory,setBudgetCategory] = useState('Marketing');
+  const [budgetAmount,setBudgetAmount] = useState('');
   const [importSummary,setImportSummary] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const [simRevenue,setSimRevenue] = useState(0);
