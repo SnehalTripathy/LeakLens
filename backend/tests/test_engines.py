@@ -140,3 +140,36 @@ def test_possible_duplicate_vendor_payment_is_flagged_for_human_review():
     assert duplicate["estimated_exposure"] == 350
     assert duplicate["evidence_count"] == 2
     assert "human review" in duplicate["classification"]
+
+
+def test_forecast_enables_seasonal_baseline_with_24_months():
+    rows = []
+    # Repeating 12-month pattern makes seasonal naive the strongest held-out baseline.
+    for month_index in range(25):
+        year = 2025 + (month_index // 12)
+        month = month_index % 12 + 1
+        seasonal_income = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2400, 2600][month - 1]
+        seasonal_expense = [400, 420, 440, 460, 480, 500, 520, 540, 560, 580, 700, 750][month - 1]
+        rows.extend([
+            tx(f"{year}-{month:02d}-05", "Seasonal Client", seasonal_income, "income", "Sales"),
+            tx(f"{year}-{month:02d}-15", "Seasonal Office", seasonal_expense, "expense", "Operations"),
+        ])
+    result = forecast(rows, horizon=3)
+    assert result["available"] is True
+    assert result["selected_model_by_metric"]["income"] == "seasonal_naive_12"
+    assert result["selected_model_by_metric"]["expenses"] == "seasonal_naive_12"
+    assert result["model"] == "Seasonal naive (12-month)"
+    assert result["forecast"][0]["income"] == 1000
+    assert result["forecast"][0]["expenses"] == 400
+
+
+def test_forecast_does_not_enable_seasonality_with_short_history():
+    rows = []
+    for month in range(1, 13):
+        rows.extend([
+            tx(f"2026-{month:02d}-05", "Client", 1000 + month * 20, "income", "Sales"),
+            tx(f"2026-{month:02d}-15", "Office", 300 + month * 10, "expense", "Operations"),
+        ])
+    result = forecast(rows)
+    assert result["available"] is True
+    assert "seasonal_naive_12" not in result["selected_model_by_metric"].values()
