@@ -434,7 +434,7 @@ def list_subscription_contracts() -> list[dict[str, Any]]:
 
 def delete_financial_data() -> dict[str, int]:
     tables = ["transactions", "budgets", "alert_states", "alert_status_history", "health_score_history",
-              "alert_feedback", "subscription_contracts"]
+              "alert_feedback", "subscription_contracts", "account_mappings"]
     counts = {}
     with connect() as db:
         for table in tables:
@@ -467,3 +467,21 @@ def set_account_mapping(category: str, account_code: str, account_name: str) -> 
         db.execute("""UPDATE transactions SET account_code=?,account_name=?
             WHERE category=? COLLATE NOCASE""", (account_code.strip(), account_name.strip(), category.strip()))
     return get_account_mapping(category) or {}
+
+
+
+def apply_retention_policy() -> dict[str, Any]:
+    days = int(get_workspace_settings().get("retention_days", 0))
+    if days <= 0:
+        return {"applied": False, "retention_days": 0, "deleted": {},
+                "note": "No retention window is configured; no records were deleted."}
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    deleted: dict[str, int] = {}
+    with connect() as db:
+        deleted["transactions"] = db.execute("DELETE FROM transactions WHERE date < ?", (cutoff,)).rowcount
+        deleted["alert_feedback"] = db.execute("DELETE FROM alert_feedback WHERE substr(created_at,1,10) < ?", (cutoff,)).rowcount
+        deleted["alert_status_history"] = db.execute("DELETE FROM alert_status_history WHERE substr(updated_at,1,10) < ?", (cutoff,)).rowcount
+        deleted["alert_states"] = db.execute("DELETE FROM alert_states WHERE substr(updated_at,1,10) < ?", (cutoff,)).rowcount
+        deleted["health_score_history"] = db.execute("DELETE FROM health_score_history WHERE snapshot_date < ?", (cutoff,)).rowcount
+    return {"applied": True, "retention_days": days, "cutoff_date": cutoff, "deleted": deleted,
+            "note": "Retention was applied manually to records older than the configured cutoff. No scheduled deletion is active."}
