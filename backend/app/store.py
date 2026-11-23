@@ -26,6 +26,7 @@ def fingerprint(row: dict[str, Any]) -> str:
         f"{float(row.get('amount', 0)):.2f}",
         str(row.get("type", "")).strip().casefold(),
         str(row.get("currency", "USD")).upper(),
+        str(row.get("branch", "")).strip().casefold(),
     ])
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -51,6 +52,45 @@ def init_db() -> None:
                 type TEXT NOT NULL CHECK(type IN ('income','expense')),
                 currency TEXT NOT NULL DEFAULT 'USD',
                 source TEXT NOT NULL DEFAULT 'manual',
+                created_at TEXT NOT NULL
+            )
+        """)
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(transactions)").fetchall()}
+        for name, definition in {
+            "branch": "TEXT NOT NULL DEFAULT ''",
+            "account_code": "TEXT NOT NULL DEFAULT ''",
+            "account_name": "TEXT NOT NULL DEFAULT ''",
+            "service_date": "TEXT NOT NULL DEFAULT ''",
+        }.items():
+            if name not in columns:
+                db.execute(f"ALTER TABLE transactions ADD COLUMN {name} {definition}")
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS workspace_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS alert_feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alert_id TEXT NOT NULL,
+                classification TEXT NOT NULL CHECK(classification IN ('confirmed_leak','false_positive','needs_more_evidence')),
+                notes TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_alert_feedback_id ON alert_feedback(alert_id)")
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS subscription_contracts (
+                id TEXT PRIMARY KEY,
+                vendor TEXT NOT NULL,
+                expected_amount REAL NOT NULL CHECK(expected_amount > 0),
+                currency TEXT NOT NULL,
+                cadence TEXT NOT NULL CHECK(cadence IN ('weekly','monthly','quarterly','annual')),
+                start_date TEXT NOT NULL DEFAULT '',
+                end_date TEXT NOT NULL DEFAULT '',
+                reference TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             )
         """)
@@ -165,11 +205,14 @@ def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
             try:
                 db.execute("""
                     INSERT INTO transactions
-                    (id,fingerprint,date,description,vendor,category,amount,type,currency,source,created_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                    (id,fingerprint,date,description,vendor,category,amount,type,currency,source,
+                     branch,account_code,account_name,service_date,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """, (clean["id"], fp, clean["date"], clean["description"], clean["vendor"],
-                      clean["category"], float(clean["amount"]), clean["type"],
-                      clean["currency"], clean["source"], datetime.now(timezone.utc).isoformat()))
+                      clean["category"], float(clean["amount"]), clean["type"], clean["currency"],
+                      clean["source"], clean.get("branch", ""), clean.get("account_code", ""),
+                      clean.get("account_name", ""), clean.get("service_date", ""),
+                      datetime.now(timezone.utc).isoformat()))
                 inserted += 1
             except sqlite3.IntegrityError:
                 duplicates += 1
@@ -179,7 +222,8 @@ def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
 def get_transaction(transaction_id: str) -> dict[str, Any] | None:
     with connect() as db:
         row = db.execute("""
-            SELECT id,date,description,vendor,category,amount,type,currency,source
+            SELECT id,date,description,vendor,category,amount,type,currency,source,
+                   branch,account_code,account_name,service_date
             FROM transactions WHERE id=?
         """, (transaction_id,)).fetchone()
     return dict(row) if row else None
@@ -188,7 +232,8 @@ def get_transaction(transaction_id: str) -> dict[str, Any] | None:
 def list_transactions() -> list[dict[str, Any]]:
     with connect() as db:
         rows = db.execute("""
-            SELECT id,date,description,vendor,category,amount,type,currency,source
+            SELECT id,date,description,vendor,category,amount,type,currency,source,
+                   branch,account_code,account_name,service_date
             FROM transactions ORDER BY date DESC, rowid DESC
         """).fetchall()
     return [dict(row) for row in rows]
@@ -230,9 +275,11 @@ def update_transaction(transaction_id: str, row: dict[str, Any]) -> bool:
         try:
             result = db.execute("""
                 UPDATE transactions SET fingerprint=?,date=?,description=?,vendor=?,category=?,
-                    amount=?,type=?,currency=?,source=? WHERE id=?
+                    amount=?,type=?,currency=?,source=?,branch=?,account_code=?,account_name=?,service_date=? WHERE id=?
             """, (fp, clean["date"], clean["description"], clean["vendor"], clean["category"],
-                  float(clean["amount"]), clean["type"], clean["currency"], clean["source"], transaction_id))
+                  float(clean["amount"]), clean["type"], clean["currency"], clean["source"],
+                  clean.get("branch", ""), clean.get("account_code", ""), clean.get("account_name", ""),
+                  clean.get("service_date", ""), transaction_id))
         except sqlite3.IntegrityError:
             return False
     return result.rowcount > 0
@@ -287,3 +334,95 @@ def existing_fingerprints() -> set[str]:
     with connect() as db:
         rows = db.execute("SELECT fingerprint FROM transactions").fetchall()
     return {row["fingerprint"] for row in rows}
+
+
+DEFAULT_SETTINGS = {"accounting_basis": "cash", "fiscal_year_start_month": 1, "default_currency": "USD",
+                    "retention_days": 0, "timezone": "UTC"}
+
+
+def get_workspace_settings() -> dict[str, Any]:
+    with connect() as db:
+        rows = db.execute("SELECT key,value FROM workspace_settings").fetchall()
+    settings = dict(DEFAULT_SETTINGS)
+    for row in rows:
+        try:
+            settings[row["key"]] = json.loads(row["value"])
+        except (TypeError, json.JSONDecodeError):
+            continue
+    return settings
+
+
+def set_workspace_settings(values: dict[str, Any]) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as db:
+        for key, value in values.items():
+            db.execute("""INSERT INTO workspace_settings(key,value,updated_at) VALUES(?,?,?)
+                ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at""",
+                (key, json.dumps(value), now))
+    return get_workspace_settings()
+
+
+def get_branch_summary() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("""SELECT branch,currency,
+            SUM(CASE WHEN type='income' THEN amount ELSE 0 END) AS revenue,
+            SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) AS expenses,
+            COUNT(*) AS transaction_count
+            FROM transactions WHERE TRIM(branch)<>'' GROUP BY branch,currency
+            ORDER BY branch,currency""").fetchall()
+    return [dict(row) | {"net": round(row["revenue"] - row["expenses"], 2)} for row in rows]
+
+
+def record_alert_feedback(alert_id: str, classification: str, notes: str = "") -> None:
+    with connect() as db:
+        db.execute("INSERT INTO alert_feedback(alert_id,classification,notes,created_at) VALUES(?,?,?,?)",
+                   (alert_id, classification, notes[:1000], datetime.now(timezone.utc).isoformat()))
+
+
+def get_alert_feedback_metrics() -> dict[str, Any]:
+    with connect() as db:
+        rows = db.execute("SELECT classification,COUNT(*) AS count FROM alert_feedback GROUP BY classification").fetchall()
+        latest = db.execute("SELECT alert_id,classification,notes,created_at FROM alert_feedback ORDER BY id DESC LIMIT 100").fetchall()
+    counts = {row["classification"]: row["count"] for row in rows}
+    confirmed = counts.get("confirmed_leak", 0)
+    false_positive = counts.get("false_positive", 0)
+    adjudicated = confirmed + false_positive
+    return {"counts": counts, "adjudicated_reviews": adjudicated,
+            "observed_precision_pct": round(confirmed / adjudicated * 100, 2) if adjudicated else None,
+            "recall_pct": None,
+            "recall_note": "Recall cannot be calculated from alert feedback alone because unflagged transactions have not been independently labelled.",
+            "recent_feedback": [dict(row) for row in latest]}
+
+
+def upsert_subscription_contract(contract: dict[str, Any]) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as db:
+        db.execute("""INSERT INTO subscription_contracts
+            (id,vendor,expected_amount,currency,cadence,start_date,end_date,reference,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET vendor=excluded.vendor,expected_amount=excluded.expected_amount,
+            currency=excluded.currency,cadence=excluded.cadence,start_date=excluded.start_date,
+            end_date=excluded.end_date,reference=excluded.reference""",
+            (contract["id"], contract["vendor"], contract["expected_amount"], contract["currency"],
+             contract["cadence"], contract.get("start_date", ""), contract.get("end_date", ""),
+             contract.get("reference", ""), now))
+    return next(item for item in list_subscription_contracts() if item["id"] == contract["id"])
+
+
+def list_subscription_contracts() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT id,vendor,expected_amount,currency,cadence,start_date,end_date,reference,created_at FROM subscription_contracts ORDER BY vendor").fetchall()
+    return [dict(row) for row in rows]
+
+
+def delete_financial_data() -> dict[str, int]:
+    tables = ["transactions", "budgets", "alert_states", "alert_status_history", "health_score_history",
+              "alert_feedback", "subscription_contracts"]
+    counts = {}
+    with connect() as db:
+        for table in tables:
+            counts[table] = db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            db.execute(f"DELETE FROM {table}")
+        db.execute("INSERT OR REPLACE INTO app_meta(key,value,updated_at) VALUES(?,?,?)",
+                   ("demo_seeded", "user_data_deleted", datetime.now(timezone.utc).isoformat()))
+    return counts
