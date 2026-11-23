@@ -148,6 +148,28 @@ def delete_transaction(transaction_id: str):
     return {"deleted": True, "id": transaction_id}
 
 
+@app.post("/api/v1/import/preview", tags=["data"])
+async def preview_import(file: UploadFile = File(...)):
+    filename = file.filename or "upload.csv"
+    content = await file.read(10 * 1024 * 1024 + 1)
+    try:
+        parsed = parse_upload(filename, content)
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    existing = store.existing_fingerprints()
+    already_present = sum(1 for row in parsed["rows"] if store.fingerprint(row) in existing)
+    return {
+        "filename": filename, "total_rows": parsed["total_rows"],
+        "valid_rows": len(parsed["rows"]), "estimated_new_rows": max(0, len(parsed["rows"]) - already_present),
+        "duplicates_already_in_workspace": already_present,
+        "duplicates_within_file": len(parsed["duplicate_rows"]),
+        "duplicate_row_numbers": parsed["duplicate_rows"],
+        "errors": parsed["errors"][:100], "mapped_columns": parsed["mapped_columns"],
+        "preview": parsed["rows"][:10],
+        "note": "Preview only. No records are written until the import is confirmed."
+    }
+
+
 @app.post("/api/v1/import", tags=["data"])
 async def import_transactions(file: UploadFile = File(...)):
     filename = file.filename or "upload.csv"
