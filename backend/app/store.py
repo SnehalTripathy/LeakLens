@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -135,7 +135,7 @@ def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
                     VALUES (?,?,?,?,?,?,?,?,?,?,?)
                 """, (clean["id"], fp, clean["date"], clean["description"], clean["vendor"],
                       clean["category"], float(clean["amount"]), clean["type"],
-                      clean["currency"], clean["source"], datetime.utcnow().isoformat()))
+                      clean["currency"], clean["source"], datetime.now(timezone.utc).isoformat()))
                 inserted += 1
             except sqlite3.IntegrityError:
                 duplicates += 1
