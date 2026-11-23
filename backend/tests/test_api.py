@@ -295,3 +295,26 @@ def test_local_backup_can_restore_valid_sqlite_snapshot(tmp_path, monkeypatch):
                                files={"file": ("backup.sqlite3", backup.content, "application/octet-stream")})
         assert restored.status_code == 200
         assert restored.json()["transaction_count"] == before
+
+
+def test_manual_retention_policy_requires_local_admin_and_applies_cutoff(tmp_path, monkeypatch):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        assert client.post("/api/v1/admin/retention/apply",
+                           params={"confirmation": "APPLY LEAKLENS RETENTION"}).status_code == 403
+    monkeypatch.setenv("LEAKLENS_ENABLE_LOCAL_ADMIN", "true")
+    with TestClient(app) as client:
+        settings = client.get("/api/v1/settings").json()
+        settings["retention_days"] = 30
+        assert client.put("/api/v1/settings", json=settings).status_code == 200
+        old = {
+            "date": "2020-01-01", "description": "Old retained transaction", "vendor": "Old Vendor",
+            "category": "Operations", "amount": 10, "type": "expense", "currency": "USD"
+        }
+        assert client.post("/api/v1/transactions", json=old).status_code == 200
+        applied = client.post("/api/v1/admin/retention/apply",
+                              params={"confirmation": "APPLY LEAKLENS RETENTION"})
+        assert applied.status_code == 200
+        assert applied.json()["applied"] is True
+        assert applied.json()["deleted"]["transactions"] == 1
+        assert client.get("/api/v1/transactions", params={"q": "Old Vendor"}).json()["count"] == 0
