@@ -18,3 +18,20 @@ describe('LeakLens workspace', () => {
     expect(screen.getByText(/LEDGER MANAGEMENT/)).toBeInTheDocument();
   });
 });
+
+
+  it('reaches every implemented workspace module from the sidebar', () => {
+    render(<App />);
+    const routes = [
+      'Overview', 'Transactions', 'Revenue intelligence', 'Expense intelligence',
+      'Leak detection', 'Anomaly intelligence', 'Forecasting', 'Business health',
+      'Recommendations', 'What-if simulator', 'Vendor intelligence',
+      'Subscription intelligence', 'Alerts centre', 'AI assistant', 'Reports',
+      'Data quality', 'Settings',
+    ];
+    for (const route of routes) {
+      const link = screen.getByRole('button', { name: new RegExp('^' + route + '$') });
+      fireEvent.click(link);
+      expect(link.className).toContain('selected');
+    }
+  });
