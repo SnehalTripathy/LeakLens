@@ -4,11 +4,14 @@ import csv
 import io
 import json
 import os
+import sqlite3
+import tempfile
+from pathlib import Path
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Literal
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -46,6 +49,10 @@ class TransactionInput(BaseModel):
     amount: float = Field(gt=0, allow_inf_nan=False)
     type: Literal["income", "expense"]
     currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
+    branch: str = Field(default="", max_length=120)
+    account_code: str = Field(default="", max_length=40)
+    account_name: str = Field(default="", max_length=120)
+    service_date: str = Field(default="", max_length=10)
 
 
 class BudgetInput(BaseModel):
@@ -68,8 +75,46 @@ class AssistantInput(BaseModel):
     question: str = Field(min_length=2, max_length=500)
 
 
+class WorkspaceSettingsInput(BaseModel):
+    accounting_basis: Literal["cash", "accrual"] = "cash"
+    fiscal_year_start_month: int = Field(default=1, ge=1, le=12)
+    default_currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
+    retention_days: int = Field(default=0, ge=0, le=3650)
+    timezone: str = Field(default="UTC", min_length=1, max_length=80)
+
+
+class AlertFeedbackInput(BaseModel):
+    classification: Literal["confirmed_leak", "false_positive", "needs_more_evidence"]
+    notes: str = Field(default="", max_length=1000)
+
+
+class SubscriptionContractInput(BaseModel):
+    vendor: str = Field(min_length=1, max_length=120)
+    expected_amount: float = Field(gt=0, allow_inf_nan=False)
+    currency: str = Field(default="USD", pattern=r"^[A-Za-z]{3}$")
+    cadence: Literal["weekly", "monthly", "quarterly", "annual"] = "monthly"
+    start_date: str = Field(default="", max_length=10)
+    end_date: str = Field(default="", max_length=10)
+    reference: str = Field(default="", max_length=160)
+
+
 def _rows():
     return store.list_transactions()
+
+
+def _analysis_rows():
+    rows = _rows()
+    if store.get_workspace_settings().get("accounting_basis") == "accrual":
+        return [{**row, "date": row.get("service_date") or row["date"]} for row in rows]
+    return rows
+
+
+def _require_local_admin(request: Request):
+    if os.getenv("LEAKLENS_ENABLE_LOCAL_ADMIN", "").casefold() != "true":
+        raise HTTPException(status_code=403, detail="Local admin endpoints are disabled. Enable LEAKLENS_ENABLE_LOCAL_ADMIN only for trusted local development.")
+    host = request.client.host if request.client else ""
+    if host not in {"127.0.0.1", "::1", "localhost", "testclient"}:
+        raise HTTPException(status_code=403, detail="Local admin endpoints are restricted to loopback clients.")
 
 
 def _signals(rows=None):
@@ -100,7 +145,7 @@ def get_transactions(q: str | None = None, kind: Literal["income", "expense"] | 
     rows = _rows()
     if q:
         needle = q.casefold()
-        rows = [r for r in rows if needle in " ".join(str(r.get(k, "")) for k in ("id", "description", "vendor", "category")).casefold()]
+        rows = [r for r in rows if needle in " ".join(str(r.get(k, "")) for k in ("id", "description", "vendor", "category", "branch", "account_code", "account_name")).casefold()]
     if kind:
         rows = [r for r in rows if r["type"] == kind]
     if category:
@@ -119,6 +164,11 @@ def create_transaction(payload: TransactionInput):
     row = payload.model_dump()
     row["date"] = parsed
     row["currency"] = payload.currency.upper()
+    if row.get("service_date"):
+        try:
+            row["service_date"] = datetime.fromisoformat(row["service_date"]).date().isoformat()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Service date must use ISO format YYYY-MM-DD.") from exc
     row["id"] = store.fingerprint(row)[:16]
     result = store.insert_transactions([row])
     if result["duplicates"]:
@@ -137,6 +187,11 @@ def edit_transaction(transaction_id: str, payload: TransactionInput):
     row = payload.model_dump()
     row["date"] = parsed
     row["currency"] = payload.currency.upper()
+    if row.get("service_date"):
+        try:
+            row["service_date"] = datetime.fromisoformat(row["service_date"]).date().isoformat()
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Service date must use ISO format YYYY-MM-DD.") from exc
     row["source"] = "manual"
     if not store.update_transaction(transaction_id, row):
         raise HTTPException(status_code=409, detail="The edited transaction duplicates another ledger row.")
@@ -193,27 +248,27 @@ async def import_transactions(file: UploadFile = File(...)):
 
 @app.get("/api/v1/overview", tags=["analytics"])
 def get_overview():
-    return overview(_rows())
+    return overview(_analysis_rows())
 
 
 @app.get("/api/v1/expenses", tags=["analytics"])
 def get_expenses():
-    return expense_intelligence(_rows())
+    return expense_intelligence(_analysis_rows())
 
 
 @app.get("/api/v1/revenue", tags=["analytics"])
 def get_revenue():
-    return revenue_intelligence(_rows())
+    return revenue_intelligence(_analysis_rows())
 
 
 @app.get("/api/v1/comparison", tags=["analytics"])
 def get_period_comparison():
-    return period_comparison(_rows())
+    return period_comparison(_analysis_rows())
 
 
 @app.get("/api/v1/data-quality", tags=["data"])
 def get_data_quality():
-    return data_quality(_rows())
+    return data_quality(_analysis_rows())
 
 
 @app.get("/api/v1/budgets", tags=["analytics"])
@@ -236,19 +291,19 @@ def get_leaks():
 
 @app.get("/api/v1/anomalies", tags=["intelligence"])
 def get_anomalies():
-    return anomaly_detection(_rows())
+    return anomaly_detection(_analysis_rows())
 
 
 @app.get("/api/v1/forecast", tags=["intelligence"])
 def get_forecast(horizon: int = 3):
     if horizon < 1 or horizon > 3:
         raise HTTPException(status_code=422, detail="Forecast horizon must be between 1 and 3 months.")
-    return forecast(_rows(), horizon)
+    return forecast(_analysis_rows(), horizon)
 
 
 @app.get("/api/v1/health-score", tags=["intelligence"])
 def get_health_score():
-    rows = _rows()
+    rows = _analysis_rows()
     result = health_score(rows, _signals(rows))
     if result.get("available"):
         store.record_health_snapshot(result)
@@ -258,7 +313,7 @@ def get_health_score():
 
 @app.get("/api/v1/recommendations", tags=["intelligence"])
 def get_recommendations():
-    rows = _rows()
+    rows = _analysis_rows()
     items = recommendations(rows, _signals(rows), store.get_budgets())
     return {"count": len(items), "recommendations": items}
 
@@ -266,27 +321,27 @@ def get_recommendations():
 @app.post("/api/v1/simulate", tags=["intelligence"])
 def run_simulation(payload: SimulationInput):
     try:
-        return simulate(_rows(), payload.revenue_change_pct, payload.expense_change_pct, payload.one_off_cost)
+        return simulate(_analysis_rows(), payload.revenue_change_pct, payload.expense_change_pct, payload.one_off_cost)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/v1/vendors", tags=["analytics"])
 def get_vendors():
-    data = expense_intelligence(_rows())
+    data = expense_intelligence(_analysis_rows())
     return {"count": len(data["vendors"]), "vendors": data["vendors"]}
 
 
 @app.get("/api/v1/subscriptions", tags=["analytics"])
 def get_subscriptions():
-    data = expense_intelligence(_rows())
+    data = expense_intelligence(_analysis_rows())
     return {"count": len(data["recurring"]), "subscriptions": data["recurring"],
             "note": "Recurring payment patterns are inferred from transaction history; usage/contract data is not available."}
 
 
 @app.get("/api/v1/alerts", tags=["intelligence"])
 def get_alerts():
-    rows = _rows()
+    rows = _analysis_rows()
     signals = _signals(rows)
     anomaly = anomaly_detection(rows)
     states = store.get_alert_states()
@@ -324,17 +379,181 @@ def set_alert_status(alert_id: str, payload: AlertStatusInput):
 
 @app.post("/api/v1/assistant", tags=["assistant"])
 def ask_assistant(payload: AssistantInput):
-    rows = _rows()
+    rows = _analysis_rows()
     return assistant_answer(payload.question, rows, _signals(rows))
+
+
+
+@app.get("/api/v1/settings", tags=["settings"])
+def get_settings():
+    return store.get_workspace_settings()
+
+
+@app.put("/api/v1/settings", tags=["settings"])
+def put_settings(payload: WorkspaceSettingsInput):
+    values = payload.model_dump()
+    values["default_currency"] = payload.default_currency.upper()
+    return store.set_workspace_settings(values)
+
+
+@app.get("/api/v1/fiscal-year", tags=["analytics"])
+def get_fiscal_year():
+    settings = store.get_workspace_settings()
+    start_month = int(settings.get("fiscal_year_start_month", 1))
+    today = datetime.now().date()
+    start_year = today.year if today.month >= start_month else today.year - 1
+    start = datetime(start_year, start_month, 1).date()
+    end = datetime(start_year + 1, start_month, 1).date()
+    rows = [row for row in _analysis_rows() if start.isoformat() <= row["date"] < end.isoformat()]
+    return {"start_date": start.isoformat(), "end_date_exclusive": end.isoformat(),
+            "accounting_basis": settings.get("accounting_basis", "cash"), "summary": overview(rows)}
+
+
+@app.get("/api/v1/branches", tags=["analytics"])
+def get_branches():
+    return {"branches": store.get_branch_summary(),
+            "note": "Only transactions with explicit branch/location values are included; unassigned transactions are excluded."}
+
+
+@app.get("/api/v1/chart-of-accounts", tags=["analytics"])
+def get_chart_of_accounts():
+    grouped = {}
+    for row in _analysis_rows():
+        key = (row.get("account_code") or "UNMAPPED", row.get("account_name") or row.get("category") or "Unmapped", row["currency"])
+        item = grouped.setdefault(key, {"account_code": key[0], "account_name": key[1], "currency": key[2],
+                                        "income": 0.0, "expenses": 0.0, "transaction_count": 0})
+        item["income" if row["type"] == "income" else "expenses"] += row["amount"]
+        item["transaction_count"] += 1
+    accounts = []
+    for item in grouped.values():
+        item["net"] = round(item["income"] - item["expenses"], 2)
+        item["income"] = round(item["income"], 2)
+        item["expenses"] = round(item["expenses"], 2)
+        accounts.append(item)
+    return {"accounts": sorted(accounts, key=lambda item: (item["account_code"], item["currency"])),
+            "note": "Unmapped rows remain visible. Account codes/names are supplied by the ledger and are not independently certified classifications."}
+
+
+@app.post("/api/v1/alerts/{alert_id}/feedback", tags=["intelligence"])
+def submit_alert_feedback(alert_id: str, payload: AlertFeedbackInput):
+    valid_rule_ids = {item["id"] for item in _signals(_analysis_rows())}
+    anomaly = anomaly_detection(_analysis_rows())
+    valid_ml_ids = {f"ml-{item['transaction']['id']}" for item in anomaly.get("results", [])}
+    if alert_id not in valid_rule_ids and alert_id not in valid_ml_ids:
+        raise HTTPException(status_code=404, detail="Alert not found.")
+    store.record_alert_feedback(alert_id, payload.classification, payload.notes)
+    return {"saved": True, "metrics": store.get_alert_feedback_metrics()}
+
+
+@app.get("/api/v1/alert-feedback/metrics", tags=["intelligence"])
+def alert_feedback_metrics():
+    return store.get_alert_feedback_metrics()
+
+
+@app.get("/api/v1/subscription-contracts", tags=["subscriptions"])
+def get_subscription_contracts():
+    return {"contracts": store.list_subscription_contracts()}
+
+
+@app.post("/api/v1/subscription-contracts", tags=["subscriptions"])
+def save_subscription_contract(payload: SubscriptionContractInput):
+    values = payload.model_dump()
+    values["currency"] = payload.currency.upper()
+    for field in ("start_date", "end_date"):
+        if values[field]:
+            try:
+                values[field] = datetime.fromisoformat(values[field]).date().isoformat()
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=f"{field} must use ISO format YYYY-MM-DD.") from exc
+    if values["start_date"] and values["end_date"] and values["end_date"] < values["start_date"]:
+        raise HTTPException(status_code=422, detail="Contract end date must not precede its start date.")
+    values["id"] = store.fingerprint({"date": values.get("start_date", ""), "vendor": values["vendor"],
+                                      "amount": values["expected_amount"], "type": "contract",
+                                      "currency": values["currency"]})[:20]
+    return {"contract": store.upsert_subscription_contract(values)}
+
+
+@app.get("/api/v1/subscription-contracts/comparison", tags=["subscriptions"])
+def compare_subscription_contracts():
+    contracts = store.list_subscription_contracts()
+    recurring = expense_intelligence(_analysis_rows()).get("recurring", [])
+    comparisons = []
+    for contract in contracts:
+        factor = {"weekly": 52 / 12, "monthly": 1, "quarterly": 1 / 3, "annual": 1 / 12}[contract["cadence"]]
+        expected_monthly = contract["expected_amount"] * factor
+        matches = [item for item in recurring if item.get("vendor", "").casefold() == contract["vendor"].casefold()
+                   and item.get("currency", contract["currency"]) == contract["currency"]]
+        observed = max((float(item.get("average_amount", item.get("average", 0))) for item in matches), default=None)
+        comparisons.append({**contract, "expected_monthly": round(expected_monthly, 2),
+                            "observed_recurring_amount": round(observed, 2) if observed is not None else None,
+                            "variance": round(observed - expected_monthly, 2) if observed is not None else None,
+                            "status": "matched_for_review" if observed is not None else "no_matching_recurring_pattern"})
+    return {"comparisons": comparisons,
+            "note": "This compares ledger-inferred recurring amounts with user-entered contract terms. It does not verify usage, invoice authenticity, contract authenticity or entitlement."}
+
+
+@app.get("/api/v1/privacy", tags=["privacy"])
+def privacy_summary():
+    return {"authentication": "disabled", "deployment_safe": False, "database": "SQLite local-development store",
+            "retention_days": store.get_workspace_settings().get("retention_days", 0),
+            "retention_note": "0 means no automatic deletion. A non-zero retention value is a policy record only; automated deletion is not enabled.",
+            "backup": "Backup/restore routes require LEAKLENS_ENABLE_LOCAL_ADMIN=true and a loopback client.",
+            "deletion": "Data deletion requires the same local-only gate and an exact confirmation phrase.",
+            "warning": "Do not expose this unauthenticated single-workspace API to the public internet or deploy with persistent financial uploads."}
+
+
+@app.get("/api/v1/admin/backup", tags=["privacy"])
+def create_local_backup(request: Request):
+    _require_local_admin(request)
+    if not store.DB_PATH.exists():
+        raise HTTPException(status_code=404, detail="Workspace database does not exist yet.")
+    with sqlite3.connect(store.DB_PATH) as db:
+        content = db.serialize()
+    return StreamingResponse(io.BytesIO(content), media_type="application/vnd.sqlite3",
+                             headers={"Content-Disposition": "attachment; filename=leaklens-backup.sqlite3"})
+
+
+@app.post("/api/v1/admin/restore", tags=["privacy"])
+async def restore_local_backup(request: Request, confirmation: str, file: UploadFile = File(...)):
+    _require_local_admin(request)
+    if confirmation != "RESTORE LEAKLENS DATABASE":
+        raise HTTPException(status_code=400, detail="Restore confirmation phrase did not match.")
+    content = await file.read(100 * 1024 * 1024 + 1)
+    if len(content) > 100 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Backup exceeds the 100 MB restore limit.")
+    with tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False) as handle:
+        handle.write(content)
+        temp_path = Path(handle.name)
+    try:
+        with sqlite3.connect(temp_path) as source:
+            check = source.execute("PRAGMA quick_check").fetchone()
+            tables = {row[0] for row in source.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            required = {"transactions", "app_meta", "budgets", "alert_states"}
+            if not check or check[0] != "ok" or not required.issubset(tables):
+                raise HTTPException(status_code=400, detail="Uploaded file is not a valid LeakLens SQLite backup.")
+            with sqlite3.connect(store.DB_PATH) as target:
+                source.backup(target)
+    finally:
+        temp_path.unlink(missing_ok=True)
+    return {"restored": True, "transaction_count": len(_rows())}
+
+
+@app.delete("/api/v1/admin/financial-data", tags=["privacy"])
+def delete_local_financial_data(request: Request, confirmation: str):
+    _require_local_admin(request)
+    if confirmation != "DELETE MY LEAKLENS DATA":
+        raise HTTPException(status_code=400, detail="Deletion confirmation phrase did not match.")
+    return {"deleted": store.delete_financial_data(),
+            "note": "Workspace preferences are retained. Demo data will not be reseeded automatically."}
 
 
 @app.get("/api/v1/reports", tags=["reports"])
 def download_report(format: Literal["csv", "pdf"] = "csv"):
-    rows = _rows()
+    rows = _analysis_rows()
     summary = overview(rows)
     if format == "csv":
         buffer = io.StringIO()
-        columns = ["date", "description", "vendor", "category", "amount", "type", "currency", "source"]
+        columns = ["date", "service_date", "description", "vendor", "category", "account_code", "account_name", "branch", "amount", "type", "currency", "source"]
         writer = csv.DictWriter(buffer, fieldnames=columns)
         writer.writeheader()
         def safe_cell(value):
