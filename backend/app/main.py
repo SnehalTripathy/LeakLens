@@ -483,7 +483,7 @@ def compare_subscription_contracts():
         expected_monthly = contract["expected_amount"] * factor
         matches = [item for item in recurring if item.get("vendor", "").casefold() == contract["vendor"].casefold()
                    and item.get("currency", contract["currency"]) == contract["currency"]]
-        observed = max((float(item.get("average_amount", item.get("average", 0))) for item in matches), default=None)
+        observed = max((float(item.get("estimated_monthly", item.get("median_amount", 0))) for item in matches), default=None)
         comparisons.append({**contract, "expected_monthly": round(expected_monthly, 2),
                             "observed_recurring_amount": round(observed, 2) if observed is not None else None,
                             "variance": round(observed - expected_monthly, 2) if observed is not None else None,
