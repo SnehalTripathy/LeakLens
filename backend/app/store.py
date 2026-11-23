@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sqlite3
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Any, Iterable
+
+ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = Path(os.getenv("LEAKLENS_DB_PATH", str(ROOT / ".data" / "leaklens.sqlite3")))
+
+
+def connect() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    return db
+
+
+def fingerprint(row: dict[str, Any]) -> str:
+    raw = "|".join([
+        str(row.get("date", "")),
+        str(row.get("vendor", "")).strip().casefold(),
+        f"{float(row.get('amount', 0)):.2f}",
+        str(row.get("type", "")).strip().casefold(),
+        str(row.get("currency", "USD")).upper(),
+    ])
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def init_db() -> None:
+    with connect() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id TEXT PRIMARY KEY,
+                fingerprint TEXT NOT NULL UNIQUE,
+                date TEXT NOT NULL,
+                description TEXT NOT NULL,
+                vendor TEXT NOT NULL,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL CHECK(amount > 0),
+                type TEXT NOT NULL CHECK(type IN ('income','expense')),
+                currency TEXT NOT NULL DEFAULT 'USD',
+                source TEXT NOT NULL DEFAULT 'manual',
+                created_at TEXT NOT NULL
+            )
+        """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS alert_states (
+                alert_id TEXT PRIMARY KEY,
+                status TEXT NOT NULL CHECK(status IN ('open','reviewed','dismissed','resolved')),
+                updated_at TEXT NOT NULL
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_vendor ON transactions(vendor)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)")
+
+
+def _seed_rows() -> list[dict[str, Any]]:
+    today = date.today()
+    rows: list[dict[str, Any]] = []
+    recurring = [("WorkSuite Pro", "Software", 189.0), ("CloudSphere", "Technology", 640.0),
+                 ("LedgerFlow", "Software", 79.0), ("Office Hub", "Operations", 145.0)]
+    for month_back in range(5, -1, -1):
+        month_index = today.month - 1 - month_back
+        year = today.year + month_index // 12
+        month = month_index % 12 + 1
+        last_day = (date(year + (month == 12), (month % 12) + 1, 1) - timedelta(days=1)).day
+        def day(n: int) -> str:
+            return date(year, month, min(n, last_day)).isoformat()
+        # Income streams: the business has a modest upward trend.
+        trend = 1 + (5 - month_back) * 0.045
+        for i, (vendor, amount) in enumerate([
+            ("Northstar Co.", 9200), ("Verity Labs", 7100), ("Morrow Retail", 5400)
+        ]):
+            rows.append({"date": day(5 + i * 9), "description": f"Client payment — {vendor}",
+                         "vendor": vendor, "category": "Sales", "amount": round(amount * trend, 2),
+                         "type": "income", "currency": "USD", "source": "demo"})
+        for vendor, category, amount in recurring:
+            # An intentionally unusual duplicate-like payment occurs once for review.
+            actual = amount * (1.35 if vendor == "WorkSuite Pro" and month_back == 0 else 1.0)
+            rows.append({"date": day(12), "description": f"Recurring payment — {vendor}",
+                         "vendor": vendor, "category": category, "amount": actual,
+                         "type": "expense", "currency": "USD", "source": "demo"})
+        expense_items = [
+            ("AdCurrent", "Marketing", 980 + month_back * 22),
+            ("People & Co.", "People", 4700 + month_back * 35),
+            ("Paper & Co.", "Operations", 210 + month_back * 4),
+            ("Morrow Consulting", "Professional services", 680),
+            ("CloudSphere", "Technology", 420),
+        ]
+        for i, (vendor, category, amount) in enumerate(expense_items):
+            if vendor == "AdCurrent" and month_back == 0:
+                amount *= 1.85
+            rows.append({"date": day(16 + i % 10), "description": f"{category} expense — {vendor}",
+                         "vendor": vendor, "category": category, "amount": round(amount, 2),
+                         "type": "expense", "currency": "USD", "source": "demo"})
+    return rows
+
+
+def seed_if_empty() -> None:
+    with connect() as db:
+        count = db.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+    if count:
+        return
+    insert_transactions(_seed_rows())
+
+
+def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    inserted = 0
+    duplicates = 0
+    with connect() as db:
+        for row in rows:
+            clean = dict(row)
+            clean.setdefault("currency", "USD")
+            clean.setdefault("source", "import")
+            clean["id"] = clean.get("id") or fingerprint(clean)[:16]
+            fp = fingerprint(clean)
+            try:
+                db.execute("""
+                    INSERT INTO transactions
+                    (id,fingerprint,date,description,vendor,category,amount,type,currency,source,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                """, (clean["id"], fp, clean["date"], clean["description"], clean["vendor"],
+                      clean["category"], float(clean["amount"]), clean["type"],
+                      clean["currency"], clean["source"], datetime.utcnow().isoformat()))
+                inserted += 1
+            except sqlite3.IntegrityError:
+                duplicates += 1
+    return {"inserted": inserted, "duplicates": duplicates}
+
+
+def list_transactions() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("""
+            SELECT id,date,description,vendor,category,amount,type,currency,source
+            FROM transactions ORDER BY date DESC, rowid DESC
+        """).fetchall()
+    return [dict(row) for row in rows]
+
+
+def clear_transactions() -> None:
+    with connect() as db:
+        db.execute("DELETE FROM transactions")
+
+
+def update_alert_status(alert_id: str, status: str) -> None:
+    with connect() as db:
+        db.execute("""
+            INSERT INTO alert_states(alert_id,status,updated_at) VALUES(?,?,?)
+            ON CONFLICT(alert_id) DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at
+        """, (alert_id, status, datetime.utcnow().isoformat()))
+
+
+def get_alert_states() -> dict[str, str]:
+    with connect() as db:
+        rows = db.execute("SELECT alert_id,status FROM alert_states").fetchall()
+    return {row["alert_id"]: row["status"] for row in rows}
