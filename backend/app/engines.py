@@ -76,7 +76,7 @@ def parse_upload(filename: str, content: bytes) -> dict[str, Any]:
                 elif type_value in {"expense", "debit", "withdrawal", "outflow"}:
                     kind = "expense"
                 else:
-                    kind = "income" if source_amount < 0 else "expense" if source_amount > 0 else ""
+                    kind = "expense" if source_amount < 0 else "income" if source_amount > 0 else ""
             if not math.isfinite(amount) or amount <= 0:
                 raise ValueError("Amount must be a finite positive number.")
             description = _text(raw.get(mapped["description"]) if mapped["description"] else "") or "Imported transaction"
@@ -334,6 +334,7 @@ def anomaly_detection(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
+    rows = _primary_currency(rows)
     monthly: dict[str, dict[str, float]] = defaultdict(lambda: {"income": 0.0, "expenses": 0.0})
     for r in rows:
         monthly[_month_key(r["date"])][r["type"] if r["type"] == "income" else "expenses"] += r["amount"]
@@ -387,6 +388,7 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
 
 
 def health_score(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
     o = overview(rows)
     if not rows:
         return {"available": False, "reason": "Upload transactions to calculate a health score."}
@@ -416,6 +418,7 @@ def health_score(rows: list[dict[str, Any]], signals: list[dict[str, Any]]) -> d
 
 
 def recommendations(rows: list[dict[str, Any]], signals: list[dict[str, Any]], budgets: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    rows = _primary_currency(rows)
     out = []
     for signal in signals[:10]:
         exposure = signal["estimated_exposure"]
