@@ -28,7 +28,7 @@
 - [x] GitHub Actions workflow for backend tests, frontend tests, build and dependency audits.
 - [x] CI passed on dependency baseline `71c0b065`: Python tests, Python dependency audit, frontend tests, TypeScript/Vite production build and npm audit.
 - [x] Current backend suite has 37 passing tests in the isolated development verification run; the latest GitHub Actions run after the new release job is the CI gate for the final integrated commit.
-- [ ] Run the app locally in a browser and complete manual visual QA.
+- [ ] Run the app locally in a browser and complete manual visual QA. Automated browser smoke and axe checks pass; this item remains a human visual/usability review.
 
 ## P1 — Data foundation
 - [x] Canonical transaction schema and API validation.
@@ -117,12 +117,12 @@
 - [x] Interactive charts, search, date/category/type filters, import preview/confirmation, transaction CRUD, budgets, alert actions, simulator and downloads.
 - [x] Loading, empty, API-offline, error, success, confirmation and notification states.
 - [x] No sign-up, login or email workflow.
-- [x] Add reduced-motion CSS support, visible keyboard focus styles, and automated axe WCAG checks in the browser-release workflow.
+- [x] Add reduced-motion CSS support, visible keyboard focus styles, and automated axe WCAG checks in the browser-release workflow; latest integrated scan reported zero WCAG 2/2.1 A/AA violations.
 - [ ] Complete manual accessibility review, full keyboard-only pass and human contrast review.
 - [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend suite: 37 passing tests in the latest isolated verification run, covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export, public dataset processing, seasonal forecasting, account mappings, branch/fiscal settings, review feedback, contract comparison, privacy and backup/restore.
+- [x] Backend suite: 37 passing tests in the latest integrated GitHub Actions run, covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export, public dataset processing, seasonal forecasting, account mappings, branch/fiscal settings, review feedback, contract comparison, privacy and backup/restore.
 - [x] Frontend render/navigation tests.
 - [x] GitHub Actions CI for frontend tests/build and backend tests.
 - [x] npm audit clean on upgraded Vite/Vitest toolchain.
@@ -162,3 +162,5 @@ No third-party API key is required for the current local feature set. A producti
 
 - 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook; committed aggregated outputs only. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added rolling-origin model selection to the app, independently for revenue and expenses.
 - 2026-11-23: Added chart-of-accounts mapping, cash/accrual view, fiscal-year settings, branch comparison, subscription contract comparison, alert feedback capture, reviewed-subset calibration metric, local backup/restore, confirmed deletion, manual retention execution, security headers, reduced-motion support and a Playwright/axe/performance browser-release job. Backend verification reached 37 passing tests. The final integrated GitHub Actions run is the remaining automated CI gate; manual browser/accessibility review and production database/privacy architecture remain user review items. Raw UCI workbook and customer/invoice-level rows were not committed.
+
+- 2026-11-23: Final integrated CI run `45227144194` passed backend tests (37), frontend tests/build, dependency audits and the Playwright release workflow. The axe WCAG 2/2.1 A/AA scan returned zero violations; the browser flow completed import preview/confirmation, leak detection, alert review and CSV export. Automated mobile overflow, keyboard-focus and page-load checks passed. Manual product/visual review and production/privacy architecture decisions remain; no deployment was performed.
