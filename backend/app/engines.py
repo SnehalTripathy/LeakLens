@@ -193,12 +193,13 @@ def expense_intelligence(rows: list[dict[str, Any]]) -> dict[str, Any]:
         category_totals[r["category"]] += r["amount"]
         vendor_totals[r["vendor"]] += r["amount"]
     recurring = []
+    primary_currency = expenses[0].get("currency", "USD")
     for vendor, group in _group(expenses, "vendor").items():
         if len(group) >= 3:
             amounts = [g["amount"] for g in group]
             if max(amounts) <= max(min(amounts) * 1.35, np.median(amounts) * 1.25):
                 recurring.append({"vendor": vendor, "occurrences": len(group), "median_amount": round(float(np.median(amounts)), 2),
-                                  "estimated_monthly": round(float(np.median(amounts)), 2)})
+                                  "estimated_monthly": round(float(np.median(amounts)), 2), "currency": primary_currency})
     recurring_vendors = {x["vendor"] for x in recurring}
     fixed = sum(r["amount"] for r in expenses if r["vendor"] in recurring_vendors)
     total = sum(r["amount"] for r in expenses)
