@@ -20,14 +20,17 @@ def connect() -> sqlite3.Connection:
 
 
 def fingerprint(row: dict[str, Any]) -> str:
-    raw = "|".join([
+    parts = [
         str(row.get("date", "")),
         str(row.get("vendor", "")).strip().casefold(),
         f"{float(row.get('amount', 0)):.2f}",
         str(row.get("type", "")).strip().casefold(),
         str(row.get("currency", "USD")).upper(),
-        str(row.get("branch", "")).strip().casefold(),
-    ])
+    ]
+    # Preserve historical fingerprints for legacy transactions without branch metadata.
+    if str(row.get("branch", "")).strip():
+        parts.append(str(row.get("branch", "")).strip().casefold())
+    raw = "|".join(parts)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
