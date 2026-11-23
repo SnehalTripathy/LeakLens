@@ -483,7 +483,8 @@ def recommendations(rows: list[dict[str, Any]], signals: list[dict[str, Any]], b
                         "action": f"Review renewal terms and backup options for {biggest[0]}; avoid changing providers without a service comparison.",
                         "evidence": f"This vendor represents {share:.0%} of recorded expense spend.",
                         "potential_savings": 0, "savings_type": "no savings estimate; concentration review"})
-    return out
+    priority_order = {"high": 0, "medium": 1, "low": 2}
+    return sorted(out, key=lambda item: (priority_order.get(item["priority"], 3), -item["potential_savings"]))
 
 
 def simulate(rows: list[dict[str, Any]], revenue_change_pct: float, expense_change_pct: float,
