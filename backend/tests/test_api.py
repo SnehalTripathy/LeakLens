@@ -11,7 +11,10 @@ def setup_workspace(tmp_path):
 def test_core_endpoints(tmp_path):
     setup_workspace(tmp_path)
     with TestClient(app) as client:
-        assert client.get("/health").json()["status"] == "ok"
+        health = client.get("/health")
+        assert health.json()["status"] == "ok"
+        assert health.headers["x-content-type-options"] == "nosniff"
+        assert health.headers["x-frame-options"] == "DENY"
         overview = client.get("/api/v1/overview").json()
         assert overview["transaction_count"] >= 50
         assert overview["revenue"] > 0
@@ -318,3 +321,14 @@ def test_manual_retention_policy_requires_local_admin_and_applies_cutoff(tmp_pat
         assert applied.json()["applied"] is True
         assert applied.json()["deleted"]["transactions"] >= 1
         assert client.get("/api/v1/transactions", params={"q": "Old Vendor"}).json()["count"] == 0
+
+
+def test_restore_rejects_corrupt_sqlite_file(tmp_path, monkeypatch):
+    setup_workspace(tmp_path)
+    monkeypatch.setenv("LEAKLENS_ENABLE_LOCAL_ADMIN", "true")
+    with TestClient(app) as client:
+        response = client.post("/api/v1/admin/restore",
+                               params={"confirmation": "RESTORE LEAKLENS DATABASE"},
+                               files={"file": ("not-a-database.sqlite3", b"not a sqlite database", "application/octet-stream")})
+        assert response.status_code == 400
+        assert "not a readable SQLite backup" in response.json()["detail"]
