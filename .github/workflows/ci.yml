@@ -13,6 +13,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r backend/requirements.txt
+      - name: Python dependency audit
+        run: |
+          python -m pip install pip-audit
+          pip-audit -r backend/requirements.txt
       - run: pytest backend/tests
         env:
           PYTHONPATH: backend
@@ -26,10 +30,8 @@ jobs:
       - working-directory: frontend
         run: npm install
       - working-directory: frontend
-        name: Dependency audit (report only)
-        run: |
-          npm audit --json > audit-report.json || true
-          node -e "const a=require('./audit-report.json'); for (const [name,v] of Object.entries(a.vulnerabilities||{})) console.log(name, v.severity, 'fixAvailable='+JSON.stringify(v.fixAvailable)); console.log('Totals:', JSON.stringify(a.metadata?.vulnerabilities||{}));"
+        name: Frontend dependency audit
+        run: npm audit
       - working-directory: frontend
         run: npm test
       - working-directory: frontend
