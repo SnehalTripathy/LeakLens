@@ -176,6 +176,15 @@ def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
     return {"inserted": inserted, "duplicates": duplicates}
 
 
+def get_transaction(transaction_id: str) -> dict[str, Any] | None:
+    with connect() as db:
+        row = db.execute("""
+            SELECT id,date,description,vendor,category,amount,type,currency,source
+            FROM transactions WHERE id=?
+        """, (transaction_id,)).fetchone()
+    return dict(row) if row else None
+
+
 def list_transactions() -> list[dict[str, Any]]:
     with connect() as db:
         rows = db.execute("""
