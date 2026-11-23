@@ -54,8 +54,9 @@ def main() -> None:
         cwd=ROOT / "backend", env=env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
     )
     web = subprocess.Popen(
-        ["npm", "run", "preview", "--", "--host", "127.0.0.1", "--port", "4173"],
-        cwd=ROOT / "frontend", env=env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
+        [sys.executable, "-m", "http.server", "4173", "--bind", "127.0.0.1",
+         "--directory", str(ROOT / "frontend" / "dist")],
+        cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT,
     )
     csv_path = work / "review-ledger.csv"
     lines = ["date,description,vendor,category,amount,type,currency,branch,account_code,account_name,service_date"]
