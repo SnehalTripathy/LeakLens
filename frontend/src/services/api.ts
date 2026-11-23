@@ -20,6 +20,13 @@ export const apiPost = <T,>(path: string, payload: unknown) =>
   request<T>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 export const apiPatch = <T,>(path: string, payload: unknown) =>
   request<T>(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export const apiPut = <T,>(path: string, payload: unknown) =>
+  request<T>(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+export async function apiDelete<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
+  if (!response.ok) throw new ApiError(await response.text(), response.status);
+  return response.json() as Promise<T>;
+}
 
 export async function apiUpload<T>(path: string, file: File): Promise<T> {
   const form = new FormData();
