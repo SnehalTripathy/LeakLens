@@ -21,6 +21,10 @@ ALIASES = {
     "credit": ["credit", "deposit", "money_in"],
     "type": ["type", "direction", "transaction_type", "income_expense", "kind"],
     "currency": ["currency", "ccy"],
+    "branch": ["branch", "location", "business_unit", "store_location"],
+    "account_code": ["account_code", "gl_code", "nominal_code", "ledger_code"],
+    "account_name": ["account_name", "gl_account", "ledger_account"],
+    "service_date": ["service_date", "service_period_date", "recognition_date"],
 }
 
 
@@ -88,11 +92,18 @@ def parse_upload(filename: str, content: bytes) -> dict[str, Any]:
             vendor = _text(raw.get(mapped["vendor"]) if mapped["vendor"] else "") or description
             category = _text(raw.get(mapped["category"]) if mapped["category"] else "") or "Uncategorised"
             currency = (_text(raw.get(mapped["currency"]) if mapped["currency"] else "") or "USD").upper()
+            branch = _text(raw.get(mapped["branch"]) if mapped["branch"] else "")[:120]
+            account_code = _text(raw.get(mapped["account_code"]) if mapped["account_code"] else "")[:40]
+            account_name = _text(raw.get(mapped["account_name"]) if mapped["account_name"] else "")[:120]
+            service_date = ""
+            if mapped["service_date"] and _text(raw.get(mapped["service_date"])):
+                service_date = pd.to_datetime(raw.get(mapped["service_date"]), errors="raise", dayfirst=False).date().isoformat()
             if not re.fullmatch(r"[A-Z]{3}", currency):
                 raise ValueError("Currency must be a three-letter ISO code.")
             row = {"date": parsed_date, "description": description[:240], "vendor": vendor[:120],
                    "category": category[:100], "amount": round(amount, 2), "type": kind,
-                   "currency": currency, "source": "upload"}
+                   "currency": currency, "source": "upload", "branch": branch,
+                   "account_code": account_code, "account_name": account_name, "service_date": service_date}
             key = (row["date"], row["vendor"].casefold(), row["amount"], row["type"], currency)
             if key in seen:
                 duplicate_rows.append(row_no)
