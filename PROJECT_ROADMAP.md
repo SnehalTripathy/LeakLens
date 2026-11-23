@@ -59,7 +59,7 @@
 - [x] Vendor concentration and repeated small-charge signals.
 - [x] Possible duplicate vendor payments based on near-identical amounts within a three-day window.
 - [x] Severity, evidence records, estimated exposure, alert workflow and duplicate import detection.
-- [ ] Tune thresholds using labelled real business examples; measure false positives and false negatives before treating signals as operational controls.
+- [ ] Tune thresholds using labelled real business examples; measure false positives and false negatives before treating signals as operational controls. UCI Online Retail II has no fraud labels and is explicitly not used to claim fraud-detection performance.
 
 ## P4 — ML anomaly intelligence
 - [x] Features for transaction amount, timing, vendor frequency and category frequency.
@@ -91,7 +91,7 @@
 - [x] Vendor concentration and cost analysis.
 - [x] Recurring payment/subscription inference.
 - [x] Month-to-month financial comparison.
-- [ ] Branch comparisons (requires branch/location identifiers in uploaded data).
+- [x] Add customer-country revenue aggregation on UCI Online Retail II as a geography benchmark; explicitly not presented as branch comparisons.\n- [ ] Branch comparisons (requires actual branch/location identifiers in uploaded data).
 - [ ] External industry benchmarking (only after a credible, licensed benchmark dataset is selected).
 - [ ] Subscription usage/contract verification (requires usage, invoice or contract evidence).
 
@@ -122,14 +122,14 @@
 - [x] Backend end-to-end integration test for import → detect → review → report.
 - [x] Deterministic financial-engine unit tests and frontend navigation coverage for all workspace modules.
 - [x] Local QA checklist and sample import ledger are documented.
-- [ ] Add full browser end-to-end tests for import → detect → review → report.
+- [x] Add unit coverage for public-dataset cleaning, cancellation/refund arithmetic, country/month/invoice aggregation and rolling-origin forecast evaluation.\n- [ ] Run full UCI dataset pipeline and preserve benchmark result artifacts outside the raw-data repository.\n- [ ] Add full browser end-to-end tests for import → detect → review → report.
 - [ ] Add automated accessibility and performance checks.
 - [ ] Review business-data privacy, backup/restore, retention and deletion policies.
 - [ ] Select production persistence (managed PostgreSQL or an approved alternative); SQLite currently targets local development.
 - [ ] Complete manual regression, screenshots, release notes and final technical documentation.
 - **Release gate:** Do not mark v1.0 production-ready until the pending P10 checks are complete.
 
-## P11 — Deployment (last step only)
+## Public dataset research reference\n- UCI Online Retail II (Chen, 2012), DOI 10.24432/C5CG6D, CC BY 4.0. One million-plus historical invoice lines from a UK retailer. See `docs/PUBLIC_DATASET_STUDY.md`.\n- Scope boundary: sales, refunds, invoice/customer/country data only; no expenses, supplier costs, branch identifiers or fraud labels.\n\n## P11 — Deployment (last step only)
 - [ ] User approves deployment architecture and the no-login data-access model.
 - [ ] Choose between a read-only public demo or a private/isolated workspace model. A public unauthenticated API with persistent financial uploads would expose one shared workspace and is unsafe to launch as-is.
 - [ ] Deploy FastAPI backend to Python-capable hosting with persistent database storage.
@@ -142,3 +142,4 @@ No third-party API key is required for the current local feature set. A producti
 
 ## Progress log
 - 2026-11-23: Implemented the core v1 feature set, import preview, sample data, duplicate-payment signals, alert/health histories, naive forecast benchmark and local seed persistence guard. Backend suite reached 20 passing tests; frontend tests/build and strict npm/Python audits passed. Manual browser/accessibility QA, real-world model tuning, production persistence and the no-login deployment decision remain.
+\n- 2026-11-23: Added UCI Online Retail II public-dataset research pipeline and tests. Full workbook execution remains pending because the dataset must be downloaded in a network-enabled local environment; no fabricated benchmark metrics are recorded.\n
