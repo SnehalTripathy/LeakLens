@@ -211,6 +211,32 @@ def leak_signals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = _primary_currency(rows)
     expenses = [r for r in rows if r["type"] == "expense"]
     signals: list[dict[str, Any]] = []
+    # Near-identical payments to the same vendor within three days may be duplicate charges.
+    for vendor, group in _group(expenses, "vendor").items():
+        ordered = sorted(group, key=lambda r: r["date"])
+        duplicate_ids: set[str] = set()
+        duplicate_rows: dict[str, dict[str, Any]] = {}
+        exposure = 0.0
+        for index, current in enumerate(ordered):
+            current_day = pd.to_datetime(current["date"]).date()
+            for previous in reversed(ordered[:index]):
+                previous_day = pd.to_datetime(previous["date"]).date()
+                day_gap = (current_day - previous_day).days
+                if day_gap > 3:
+                    break
+                tolerance = max(1.0, previous["amount"] * 0.01)
+                if abs(current["amount"] - previous["amount"]) <= tolerance:
+                    if current["id"] not in duplicate_ids:
+                        duplicate_ids.add(current["id"])
+                        duplicate_rows[previous["id"]] = previous
+                        duplicate_rows[current["id"]] = current
+                        exposure += min(current["amount"], previous["amount"])
+                    break
+        if duplicate_ids:
+            evidence = list(duplicate_rows.values())
+            signals.append(_signal("possible-duplicate-payment", vendor, "Possible duplicate vendor payment",
+                                   f"{len(duplicate_ids)} transaction(s) resemble an earlier payment to {vendor} within three days. Confirm invoices, payment references and service periods.",
+                                   exposure, "medium", evidence, "Same-vendor amount similarity (within 1% or 1 currency unit) within a three-day window"))
     # Large individual transaction compared with the same vendor's past activity.
     for vendor, group in _group(expenses, "vendor").items():
         ordered = sorted(group, key=lambda r: r["date"])
