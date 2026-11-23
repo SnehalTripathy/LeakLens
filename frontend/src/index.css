@@ -127,3 +127,19 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 @media(max-width:1000px){.charts{grid-template-columns:1fr}.metrics.compact{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.model-summary{grid-template-columns:1fr 1fr}.model-summary>div:last-child{grid-column:span 2}.health-grid,.report-grid{grid-template-columns:1fr}.recommendation{grid-template-columns:60px minmax(0,1fr)}.recommend-value{grid-column:2;align-items:flex-start}.recommend-value small{text-align:left}.scenario-results{grid-template-columns:1fr}.simulator{grid-template-columns:1fr}.signal-actions{justify-content:flex-start}.signal-side{width:100%;align-items:flex-start;margin-left:41px}.signal-detail{flex-wrap:wrap}.footer span:last-child{display:none}}
 @media(max-width:430px){.metrics.compact{grid-template-columns:1fr}.model-summary{grid-template-columns:1fr}.model-summary>div:last-child{grid-column:auto}.anomaly-row{gap:8px;flex-wrap:wrap}.anomaly-main{min-width:65%}.anomaly-score{margin-left:auto}.anomaly-row>strong{margin-left:22px}.top-actions{gap:8px}.health-score{align-items:flex-start;flex-direction:column}}
+
+
+.budget-form{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin:15px 0}
+.budget-form label{display:flex;flex-direction:column;gap:6px;font-size:9px;color:#dfe2d7}
+.budget-form input{height:36px;min-width:0;border:1px solid #3a3d35;border-radius:6px;background:#0f100f;color:#f5f6f1;padding:0 10px;font-size:10px}
+.budget-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.budget-row{padding:12px;border:1px solid #30342b;background:#171916;border-radius:8px;display:flex;flex-direction:column;gap:8px}
+.budget-row>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.budget-row b{font-size:10px}.budget-row strong{font:500 10px 'DM Mono';color:#C6F432}
+.budget-row small{font-size:8px;color:#94998b;line-height:1.4}
+.budget-row .progress{margin:0}
+.budget-row .progress i.over{background:#ed9874}
+.table-actions{display:flex;gap:5px}
+.table-actions button{width:25px;height:25px;display:grid;place-items:center;border:1px solid #3b4032;border-radius:5px;background:#1b2015;color:#c6f432;transition:.18s}
+.table-actions button:hover{background:#c6f432;color:#0b0b0c}
+@media(max-width:700px){.budget-form{grid-template-columns:1fr}.budget-list{grid-template-columns:1fr}}
