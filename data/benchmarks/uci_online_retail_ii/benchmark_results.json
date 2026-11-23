@@ -1,0 +1,52 @@
+{
+  "dataset": "UCI Online Retail II",
+  "citation": "Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CG6D",
+  "license": "CC BY 4.0",
+  "period": "2009-12-01 to 2011-12-09",
+  "quality": {
+    "source_rows": 1067371,
+    "retained_rows": 1061164,
+    "dropped_rows": 6207,
+    "invalid_dates": 0,
+    "invalid_numeric_rows": 0,
+    "cancellation_or_return_lines": 19494,
+    "missing_customer_ids": 236871,
+    "currency": "GBP"
+  },
+  "summary": {
+    "months": 25,
+    "countries": 43,
+    "invoices": 48369,
+    "customers_with_ids": 5939,
+    "net_sales_gbp": 19445926.71,
+    "gross_sales_gbp": 20972968.14,
+    "refunds_gbp": 1527041.43
+  },
+  "forecast_backtest": {
+    "methodology": "Expanding-window rolling-origin; 12 minimum training months; maximum 3-month horizon; 13 origins; 36 predictions per method.",
+    "scores": {
+      "last_value": {
+        "mae": 305889.14,
+        "wape_pct": 39.86
+      },
+      "moving_average_3": {
+        "mae": 319079.38,
+        "wape_pct": 41.57
+      },
+      "linear_trend": {
+        "mae": 329784.35,
+        "wape_pct": 42.97
+      },
+      "seasonal_naive_12": {
+        "mae": 130068.99,
+        "wape_pct": 16.95
+      }
+    },
+    "best_by_wape": "seasonal_naive_12"
+  },
+  "limitations": [
+    "Single retailer, historical 2009-2011 dataset.",
+    "No operating expenses, suppliers, bank balances, branches, or fraud labels.",
+    "Not suitable for fraud classification or claims about leak detection precision/recall."
+  ]
+}
