@@ -55,11 +55,14 @@ jobs:
         working-directory: frontend
         run: |
           npm install
-          npm install --no-save axe-core@4.10.3
+      - name: Fetch axe-core accessibility rules
+        run: curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.3/axe.min.js -o /tmp/axe.min.js
       - name: Build production frontend
         working-directory: frontend
         env:
           VITE_API_BASE_URL: http://127.0.0.1:8000
         run: npm run build
       - name: Run browser workflow, accessibility and performance smoke checks
+        env:
+          AXE_CORE_PATH: /tmp/axe.min.js
         run: python scripts/release_smoke.py
