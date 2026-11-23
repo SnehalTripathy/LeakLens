@@ -2,92 +2,154 @@
 
 **Find the leaks. Understand the losses. Protect your profits.**
 
-LeakLens is a financial intelligence workspace for business transaction analysis, unusual-spend detection, trend forecasting and evidence-based cost-control recommendations.
+LeakLens helps businesses make sense of their financial activity. Import transaction records, review unusual spending, track revenue and expenses, and identify areas that may need attention.
 
-## Product decisions
-- No sign-up, login, password or email collection in v1.0.
-- React + Vite + TypeScript frontend and Python + FastAPI backend.
-- Brand palette: Midnight Black `#0B0B0C`, Pure White `#FFFFFF`, Electric Lime `#C6F432`, with restrained graphite/sage/amber functional accents.
-- Local demo ledger and CSV/XLS/XLSX imports with a preview and explicit confirmation step.
-- Multiple currencies are not converted or combined; analytics use the most common currency and disclose the scope.
-- Anomaly scores are relative indicators, not probabilities of fraud. Potential exposure is not a confirmed loss or guaranteed saving.
-- The assistant is deterministic and ledger-grounded; it does not send data to an external AI provider.
+It brings everyday financial analysis into one workspace, with clear explanations behind its findings.
 
-## Current capabilities
-- Financial overview, revenue/expense intelligence, period comparisons and category budgets.
-- Transaction import preview, validation, deduplication, create/edit/delete, search and filters.
-- Rule-based leak signals with evidence, potential exposure and alert review workflow.
-- Isolation Forest + Local Outlier Factor anomaly comparison and contextual explanations.
-- Revenue/expense forecasts with linear, last-value, moving-average and 12-month seasonal-naive model selection (seasonality requires 24 contiguous months), backtest metrics and indicative uncertainty bands.
-- Transparent six-dimension health score, daily score history and evidence-linked recommendations.
-- What-if financial simulator, vendor and recurring subscription insights with user-entered contract comparison.
-- Cash/accrual reporting view, fiscal-year configuration, category-to-account mappings and branch/location comparisons.
-- Human alert outcome feedback with carefully qualified reviewed-subset metrics.
-- Alert lifecycle with reopen and status history.
-- Data-grounded assistant, data-quality checks and CSV/PDF reports.
-- Local-only backup/restore, explicit-confirmation data deletion and manually applied retention policy; local admin endpoints are disabled by default.
+## What you can do with LeakLens
 
-## Public dataset research
-- Reproducible UCI Online Retail II cleaning, monthly/country/invoice aggregation and rolling-origin revenue forecast benchmarking: [`docs/PUBLIC_DATASET_STUDY.md`](docs/PUBLIC_DATASET_STUDY.md).
-- Actual full-workbook results and forecast model comparison: [`docs/UCI_ONLINE_RETAIL_II_RESULTS.md`](docs/UCI_ONLINE_RETAIL_II_RESULTS.md).
-- Raw public data is downloaded locally and excluded from Git; only aggregated monthly/country outputs and non-identifying benchmark metrics are committed.
+- **Review your finances:** See income, expenses, balances, category breakdowns and changes across reporting periods.
+- **Import transaction data:** Upload CSV, XLS or XLSX files. Review the detected columns and records before confirming an import.
+- **Find unusual activity:** Surface possible duplicate payments, sudden vendor increases, recurring charges and other spending patterns.
+- **Understand trends:** Compare revenue and expenses, view forecasts and check how the selected forecasting method performed against historical data.
+- **Keep budgets in view:** Set category budgets and compare them with actual and projected spending.
+- **Explore vendors and subscriptions:** Review vendor concentration, recurring payments and differences between observed charges and contract details you enter.
+- **Plan ahead:** Use recommendations and the what-if simulator to explore possible changes to revenue, expenses and one-off costs.
+- **Work with your own accounting structure:** Configure cash or accrual reporting, fiscal-year settings, branches and category-to-account mappings.
+- **Review and export:** Track alert decisions, inspect data-quality information, and export transaction data or financial summaries.
 
-## Local QA and sample import
-- Sample import file: [`samples/sample-transactions.csv`](samples/sample-transactions.csv)
-- Manual browser, responsive, import, alert, report and persistence checks: [`docs/LOCAL_QA_CHECKLIST.md`](docs/LOCAL_QA_CHECKLIST.md)
+## How the analysis works
 
-## Repository structure
-- `frontend/` — React UI, design system, charts, interactions and API client.
-- `backend/` — FastAPI, SQLite local workspace store, financial analytics, anomaly and forecasting engines.
-- `PROJECT_ROADMAP.md` — implementation status, acceptance criteria and release gates.
+LeakLens combines transaction rules, statistical methods and financial summaries to highlight activity worth reviewing.
 
-## Requirements
-- Node.js 20+
-- Python 3.11+ (CI currently uses Python 3.12)
+Findings are intended to support investigation, not replace it. An anomaly score is not a probability of fraud. A flagged transaction is not proof of wrongdoing, and estimated exposure should not be treated as a confirmed loss or guaranteed saving.
 
-## Run the frontend
+Forecasts are estimates based on the available transaction history. Their usefulness depends on the quality and coverage of the data provided.
+
+The built-in assistant answers questions using the current workspace's financial data. It does not send transaction information to an external AI service.
+
+## Getting started
+
+### Requirements
+
+- Node.js 20 or later
+- Python 3.11 or later
+
+### 1. Start the backend
+
+From the repository root:
+
+```bash
+cd backend
+python -m venv .venv
+```
+
+Activate the environment:
+
+**Windows PowerShell**
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+**macOS / Linux**
+```bash
+source .venv/bin/activate
+```
+
+Install the dependencies and start the API:
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+The API will be available at:
+
+- Health check: http://localhost:8000/health
+- API documentation: http://localhost:8000/docs
+
+### 2. Start the frontend
+
+Open a second terminal from the repository root:
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open http://localhost:5173.
 
-## Run the backend
-```bash
-cd backend
-python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-API health: http://localhost:8000/health  
-API docs: http://localhost:8000/docs
+Open the local address printed by Vite, usually http://localhost:5173.
 
-The first API start creates a local SQLite database under `.data/` and seeds a six-month demo ledger. Imported and manually edited transactions persist in that local database. Optional local-only backup, restore, manual retention and data deletion endpoints require `LEAKLENS_ENABLE_LOCAL_ADMIN=true` and a loopback client; keep this disabled for normal use.
+### 3. Explore the sample workspace
 
-## Tests
+On its first start, the backend creates a local SQLite database in `.data/` and loads a six-month sample ledger. The sample company, vendors and transactions are fictional and are included to demonstrate the analysis and import workflows.
+
+You can also try importing [the sample transaction file](samples/sample-transactions.csv). The import screen provides a preview before records are added.
+
+## Data and privacy
+
+LeakLens v1.0 is designed as a local development workspace:
+
+- It does not require an account, email address or password.
+- Financial records are stored in a local SQLite database.
+- The built-in assistant processes workspace data locally and does not call an external AI provider.
+- Multiple currencies are not converted into a common currency. Reports keep currency context rather than adding unlike amounts together.
+
+**Do not expose the current backend to the public internet.** It is a single-workspace service without user authentication or workspace isolation. Anyone who can reach an exposed instance could access the same workspace. Before using it with real financial information or deploying it for multiple users, a secure access model, workspace separation and production database must be implemented.
+
+Local backup, restore, retention and financial-data deletion endpoints are disabled by default. They can be enabled for trusted local administration with `LEAKLENS_ENABLE_LOCAL_ADMIN=true`. Keep this setting disabled in normal use and never enable these endpoints on a publicly reachable service.
+
+## Technology
+
+- **Frontend:** React, Vite, TypeScript
+- **Backend:** Python, FastAPI
+- **Storage:** SQLite for local development
+- **Analysis:** Financial rules, statistical anomaly detection and forecasting methods
+- **Charts and reporting:** Interactive financial visualisations, CSV exports and PDF summaries
+
+## Running the tests
+
+Backend tests:
+
 ```bash
 cd backend
 PYTHONPATH=. pytest
 ```
+
+Frontend tests and production build:
+
 ```bash
 cd frontend
 npm test
 npm run build
+```
+
+Dependency audits:
+
+```bash
+cd frontend
 npm audit
 ```
+
 ```bash
 cd backend
 python -m pip install pip-audit
 pip-audit -r requirements.txt
 ```
 
-GitHub Actions runs backend tests, frontend tests/build and npm/Python dependency audits. A browser-release job also exercises import → detection → review → report with Playwright, runs axe WCAG checks, checks keyboard focus/mobile overflow and enforces a lightweight page-load budget.
+The GitHub Actions workflow runs the backend and frontend checks, dependency audits and a browser-based release smoke test. The browser test covers the main import, detection, review and export flow, along with accessibility and responsive-layout checks.
 
-## Local data administration\n\nSet `LEAKLENS_ENABLE_LOCAL_ADMIN=true` only while running the backend on a trusted loopback interface to enable `/api/v1/admin/backup`, `/api/v1/admin/restore`, `/api/v1/admin/retention/apply` and `/api/v1/admin/financial-data`. Each destructive action requires an exact confirmation phrase. The retention policy is manually applied, not scheduled. Keep the setting unset/false for normal use.\n\n## Important deployment and privacy note
-Authentication is intentionally disabled in v1.0. The current backend is a single-workspace local-development service. Do not expose it publicly with persistent financial uploads: without workspace isolation, visitors would share access to the same workspace. Before deployment, choose a protected/private anonymous-workspace design or convert the public instance into a read-only demo with no persistent user uploads. The backend also needs a production database; current SQLite storage is intended for local development.
+## Project structure
 
-## Deployment
-Deployment is deliberately deferred. The React frontend will be deployed to Netlify only after the development, integration, security, accessibility and end-to-end release checks in `PROJECT_ROADMAP.md` are complete. The FastAPI backend requires separate Python-capable hosting.
+```text
+LeakLens/
+├── backend/       FastAPI application, data store and analysis engines
+├── frontend/      React application and user interface
+├── docs/          Research notes and testing guidance
+├── samples/       Example transaction files
+└── scripts/       Development and release checks
+```
+
+## Current status
+
+LeakLens is under active development. The local application and automated test suite are available to explore, but the project is not yet ready for public deployment or for storing real customer financial data. Production hosting and a secure multi-user data model are still to be addressed.
