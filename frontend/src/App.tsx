@@ -52,6 +52,8 @@ export default function App() {
   const [budgetCategory,setBudgetCategory] = useState('Marketing');
   const [budgetAmount,setBudgetAmount] = useState('');
   const [importSummary,setImportSummary] = useState('');
+  const [pendingFile,setPendingFile] = useState<File|null>(null);
+  const [importPreview,setImportPreview] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [simRevenue,setSimRevenue] = useState(0);
   const [simExpense,setSimExpense] = useState(0);
@@ -100,13 +102,22 @@ export default function App() {
   const importFile = async (file?:File) => {
     if (!file) return;
     try {
-      const result = await apiUpload<any>('/api/v1/import',file);
+      const preview = await apiUpload<any>('/api/v1/import/preview',file);
+      setPendingFile(file);
+      setImportPreview(preview);
+    } catch (e) { notify(`Import preview failed: ${String(e)}. Check the file format and local API.`); }
+    finally { if(fileRef.current) fileRef.current.value=''; }
+  };
+  const confirmImport = async () => {
+    if (!pendingFile) return;
+    try {
+      const result = await apiUpload<any>('/api/v1/import',pendingFile);
       const errors = result.errors?.length || 0;
       setImportSummary(`${result.inserted} transactions imported · ${result.duplicates_already_in_workspace + result.duplicates_within_file} duplicates · ${errors} invalid rows`);
+      setPendingFile(null);setImportPreview(null);
       notify(`Import processed: ${result.inserted} new transactions added.`);
       await loadData(true);
-    } catch (e) { notify(`Import failed: ${String(e)}. Check that the local API is running.`); }
-    finally { if(fileRef.current) fileRef.current.value=''; }
+    } catch (e) { notify(`Import failed: ${String(e)}`); }
   };
   const download = async (format:'csv'|'pdf') => {
     try { await apiDownload(`/api/v1/reports?format=${format}`,`leaklens-report.${format}`); notify(`${format.toUpperCase()} report downloaded.`); }
@@ -207,6 +218,7 @@ export default function App() {
     <input ref={fileRef} hidden type="file" accept=".csv,.xlsx,.xls,text/csv" onChange={e=>importFile(e.target.files?.[0])}/>
     <AnimatePresence>{notice&&<motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="toast"><ShieldCheck size={16}/>{notice}</motion.div>}</AnimatePresence>
     <AnimatePresence>{editingTx&&<div className="modal-backdrop"><motion.form initial={{opacity:0,y:12,scale:.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0}} className="add-modal" onSubmit={saveEdit}><div className="modal-heading"><div><span>LEDGER ENTRY</span><h2>Edit transaction</h2></div><button type="button" className="icon-btn" onClick={()=>setEditingTx(null)}><X size={16}/></button></div><label>Date<input type="date" required value={editingTx.date} onChange={e=>setEditingTx((v:any)=>({...v,date:e.target.value}))}/></label><label>Description<input required value={editingTx.description} onChange={e=>setEditingTx((v:any)=>({...v,description:e.target.value}))}/></label><label>Vendor<input required value={editingTx.vendor} onChange={e=>setEditingTx((v:any)=>({...v,vendor:e.target.value}))}/></label><div className="form-row"><label>Amount<input type="number" required min="0.01" step="0.01" value={editingTx.amount} onChange={e=>setEditingTx((v:any)=>({...v,amount:e.target.value}))}/></label><label>Type<select value={editingTx.type} onChange={e=>setEditingTx((v:any)=>({...v,type:e.target.value}))}><option value="expense">Expense</option><option value="income">Income</option></select></label></div><div className="form-row"><label>Category<input value={editingTx.category} onChange={e=>setEditingTx((v:any)=>({...v,category:e.target.value}))}/></label><label>Currency<input maxLength={3} value={editingTx.currency} onChange={e=>setEditingTx((v:any)=>({...v,currency:e.target.value.toUpperCase()}))}/></label></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>setEditingTx(null)}>Cancel</button><button type="submit" className="btn primary">Save changes <ArrowRight size={14}/></button></div></motion.form></div>}</AnimatePresence>
+    <AnimatePresence>{importPreview&&pendingFile&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget){setPendingFile(null);setImportPreview(null);}}}><motion.div initial={{opacity:0,y:12,scale:.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0}} className="import-modal"><div className="modal-heading"><div><span>DATA IMPORT · PREVIEW</span><h2>Review before importing</h2><p>{pendingFile.name} · {(pendingFile.size/1024).toFixed(1)} KB</p></div><button type="button" className="icon-btn" onClick={()=>{setPendingFile(null);setImportPreview(null);}}><X size={16}/></button></div><div className="import-stats"><div><b>{importPreview.valid_rows}</b><small>VALID ROWS</small></div><div><b>{importPreview.estimated_new_rows}</b><small>ESTIMATED NEW</small></div><div><b>{importPreview.duplicates_already_in_workspace+importPreview.duplicates_within_file}</b><small>DUPLICATES</small></div><div><b>{importPreview.errors?.length||0}</b><small>INVALID ROWS</small></div></div><div className="import-columns"><b>Detected columns</b><p>{Object.entries(importPreview.mapped_columns||{}).map(([key,value])=>`${key}: ${value}`).join(' · ')}</p></div><div className="import-preview-table"><b>First records</b><div className="table-scroll"><table><thead><tr><th>DATE</th><th>DESCRIPTION</th><th>VENDOR</th><th>CATEGORY</th><th>AMOUNT</th><th>TYPE</th></tr></thead><tbody>{(importPreview.preview||[]).map((row:any,i:number)=><tr key={i}><td>{row.date}</td><td>{row.description}</td><td>{row.vendor}</td><td>{row.category}</td><td>{fmt(row.amount,row.currency)}</td><td>{row.type}</td></tr>)}</tbody></table></div></div>{importPreview.errors?.length>0&&<details className="import-errors"><summary>View rejected rows ({importPreview.errors.length})</summary><pre>{JSON.stringify(importPreview.errors,null,2)}</pre></details>}<p className="module-intro">{importPreview.note}</p><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>{setPendingFile(null);setImportPreview(null);}}>Cancel</button><button type="button" className="btn primary" disabled={importPreview.estimated_new_rows===0} onClick={confirmImport}>Confirm import <ArrowRight size={14}/></button></div></motion.div></div>}</AnimatePresence>
     <AnimatePresence>{showAdd&&<div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setShowAdd(false);}}><motion.form initial={{opacity:0,y:12,scale:.98}} animate={{opacity:1,y:0,scale:1}} exit={{opacity:0}} className="add-modal" onSubmit={addTransaction}><div className="modal-heading"><div><span>LEDGER ENTRY</span><h2>Add transaction</h2></div><button type="button" className="icon-btn" onClick={()=>setShowAdd(false)}><X size={16}/></button></div><label>Date<input type="date" required value={newTx.date} onChange={e=>setNewTx(v=>({...v,date:e.target.value}))}/></label><label>Description<input required value={newTx.description} onChange={e=>setNewTx(v=>({...v,description:e.target.value}))}/></label><label>Vendor<input required value={newTx.vendor} onChange={e=>setNewTx(v=>({...v,vendor:e.target.value}))}/></label><div className="form-row"><label>Amount<input type="number" required min="0.01" step="0.01" value={newTx.amount} onChange={e=>setNewTx(v=>({...v,amount:e.target.value}))}/></label><label>Type<select value={newTx.type} onChange={e=>setNewTx(v=>({...v,type:e.target.value}))}><option value="expense">Expense</option><option value="income">Income</option></select></label></div><div className="form-row"><label>Category<input value={newTx.category} onChange={e=>setNewTx(v=>({...v,category:e.target.value}))}/></label><label>Currency<input maxLength={3} value={newTx.currency} onChange={e=>setNewTx(v=>({...v,currency:e.target.value.toUpperCase()}))}/></label></div><div className="modal-actions"><button type="button" className="btn secondary" onClick={()=>setShowAdd(false)}>Cancel</button><button type="submit" className="btn primary">Save transaction <ArrowRight size={14}/></button></div></motion.form></div>}</AnimatePresence>
   </div>;
 }
