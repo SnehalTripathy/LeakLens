@@ -567,6 +567,8 @@ async def restore_local_backup(request: Request, confirmation: str, file: Upload
                 raise HTTPException(status_code=400, detail="Uploaded file is not a valid LeakLens SQLite backup.")
             with sqlite3.connect(store.DB_PATH) as target:
                 source.backup(target)
+    except sqlite3.DatabaseError as exc:
+        raise HTTPException(status_code=400, detail="Uploaded file is not a readable SQLite backup.") from exc
     finally:
         temp_path.unlink(missing_ok=True)
     return {"restored": True, "transaction_count": len(_rows())}
