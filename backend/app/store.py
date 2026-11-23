@@ -286,6 +286,10 @@ def update_transaction(transaction_id: str, row: dict[str, Any]) -> bool:
     clean = dict(row)
     clean.setdefault("currency", "USD")
     clean.setdefault("source", "manual")
+    mapping = get_account_mapping(clean.get("category", ""))
+    if mapping:
+        clean["account_code"] = mapping["account_code"]
+        clean["account_name"] = mapping["account_name"]
     fp = fingerprint(clean)
     with connect() as db:
         try:
