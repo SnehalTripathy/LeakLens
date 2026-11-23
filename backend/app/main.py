@@ -127,6 +127,16 @@ def _signals(rows=None):
     return leak_signals(rows if rows is not None else _rows())
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
+
 @app.get("/health", tags=["system"])
 def health():
     return {"status": "ok", "service": "leaklens-api", "version": app.version, "database": "sqlite-local", "authentication": "disabled", "public_deployment_safe": False}
@@ -549,7 +559,11 @@ async def restore_local_backup(request: Request, confirmation: str, file: Upload
             check = source.execute("PRAGMA quick_check").fetchone()
             tables = {row[0] for row in source.execute("SELECT name FROM sqlite_master WHERE type='table'")}
             required = {"transactions", "app_meta", "budgets", "alert_states"}
-            if not check or check[0] != "ok" or not required.issubset(tables):
+            transaction_columns = {row[1] for row in source.execute("PRAGMA table_info(transactions)")}
+            required_columns = {"id", "fingerprint", "date", "description", "vendor", "category",
+                                "amount", "type", "currency", "source"}
+            if (not check or check[0] != "ok" or not required.issubset(tables)
+                    or not required_columns.issubset(transaction_columns)):
                 raise HTTPException(status_code=400, detail="Uploaded file is not a valid LeakLens SQLite backup.")
             with sqlite3.connect(store.DB_PATH) as target:
                 source.backup(target)
