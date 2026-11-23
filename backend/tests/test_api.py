@@ -31,6 +31,10 @@ def test_core_endpoints(tmp_path):
             assert client.patch(f"/api/v1/alerts/{alert_id}", json={"status": "reviewed"}).status_code == 200
             history = client.get(f"/api/v1/alerts/{alert_id}/history").json()["history"]
             assert history[-1]["status"] == "reviewed"
+            assert client.patch(f"/api/v1/alerts/{alert_id}", json={"status": "open"}).status_code == 200
+            reopened = client.get(f"/api/v1/alerts/{alert_id}/history").json()["history"]
+            assert reopened[-1]["status"] == "open"
+        assert client.patch("/api/v1/alerts/not-a-real-alert", json={"status": "reviewed"}).status_code == 404
         assert client.get("/api/v1/forecast").json()["available"] is True
 
 def test_import_validates_and_deduplicates(tmp_path):
