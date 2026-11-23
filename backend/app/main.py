@@ -25,7 +25,7 @@ app = FastAPI(
 origins = [x.strip() for x in os.getenv("LEAKLENS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
 app.add_middleware(
     CORSMiddleware, allow_origins=origins, allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["*"],
 )
 
 
