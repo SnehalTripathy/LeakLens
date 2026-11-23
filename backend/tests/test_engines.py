@@ -127,3 +127,16 @@ def test_simulator_uses_last_three_month_baseline_and_assumptions():
     assert result["scenario"]["revenue"] == 1210
     assert result["scenario"]["expenses"] == 545
     assert result["net_change"] == 115
+
+
+def test_possible_duplicate_vendor_payment_is_flagged_for_human_review():
+    rows = [
+        tx("2026-11-01", "Payment Vendor", 350),
+        tx("2026-11-03", "Payment Vendor", 350),
+        tx("2026-11-18", "Payment Vendor", 350),
+    ]
+    signals = leak_signals(rows)
+    duplicate = next(s for s in signals if s["kind"] == "possible-duplicate-payment")
+    assert duplicate["estimated_exposure"] == 350
+    assert duplicate["evidence_count"] == 2
+    assert "human review" in duplicate["classification"]
