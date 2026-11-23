@@ -466,3 +466,92 @@ def assistant_answer(question: str, rows: list[dict[str, Any]], signals: list[di
     if any(k in q for k in ["profit", "margin", "cash flow"]):
         return {"answer": f"Recorded revenue is {o['revenue']:,.2f} {o['currency']}; expenses are {o['expenses']:,.2f}; net is {o['net']:,.2f}; margin is {o['profit_margin']:.1f}%.", "evidence": [{"revenue": o["revenue"], "expenses": o["expenses"], "net": o["net"], "margin": o["profit_margin"]}]}
     return {"answer": "I can answer questions about recorded revenue, expenses, profit, vendors, categories, and detected review signals. Try: “Which vendor costs the most?” or “Where are unusual expenses appearing?”", "evidence": [], "scope": "This assistant is deterministic and grounded in the current workspace data; it does not call an external LLM."}
+
+
+def revenue_intelligence(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
+    income = [r for r in rows if r["type"] == "income"]
+    total = sum(r["amount"] for r in income)
+    counterparties: dict[str, float] = defaultdict(float)
+    categories: dict[str, float] = defaultdict(float)
+    monthly: dict[str, float] = defaultdict(float)
+    for row in income:
+        counterparties[row["vendor"]] += row["amount"]
+        categories[row["category"]] += row["amount"]
+        monthly[_month_key(row["date"])] += row["amount"]
+    return {
+        "total": round(total, 2),
+        "counterparties": [{"name": k, "revenue": round(v, 2), "share": round(v / total * 100, 1) if total else 0}
+                           for k, v in sorted(counterparties.items(), key=lambda x: x[1], reverse=True)],
+        "sources": [{"name": k, "revenue": round(v, 2), "share": round(v / total * 100, 1) if total else 0}
+                    for k, v in sorted(categories.items(), key=lambda x: x[1], reverse=True)],
+        "monthly": [{"month": _fmt_month(k), "period": k, "revenue": round(v, 2)}
+                    for k, v in sorted(monthly.items())[-12:]],
+        "note": "Counterparty names are taken from the vendor/payee field; customer identity is only as accurate as the uploaded ledger."
+    }
+
+
+def budget_performance(rows: list[dict[str, Any]], budgets: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
+    currency = rows[0].get("currency", "USD") if rows else "USD"
+    selected = [b for b in budgets if b["currency"] == currency]
+    current_month = date.today().strftime("%Y-%m")
+    actuals: dict[str, float] = defaultdict(float)
+    for row in rows:
+        if row["type"] == "expense" and _month_key(row["date"]) == current_month:
+            actuals[row["category"]] += row["amount"]
+    day_no = date.today().day
+    month_days = calendar.monthrange(date.today().year, date.today().month)[1]
+    result = []
+    for budget in selected:
+        actual = actuals.get(budget["category"], 0.0)
+        limit = budget["monthly_amount"]
+        projected = actual / max(day_no, 1) * month_days
+        result.append({"category": budget["category"], "currency": currency, "budget": round(limit, 2),
+                       "actual_mtd": round(actual, 2), "remaining": round(limit - actual, 2),
+                       "projected_month_end": round(projected, 2),
+                       "variance_pct": round((actual - limit) / limit * 100, 1) if limit else None,
+                       "status": "over budget" if actual > limit else "watch" if projected > limit else "on track"})
+    return {"month": current_month, "currency": currency, "days_elapsed": day_no, "days_in_month": month_days,
+            "budgets": result, "note": "Budgets are user-entered. Projection assumes the current month-to-date daily spend rate continues."}
+
+
+def period_comparison(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
+    periods = sorted({_month_key(r["date"]) for r in rows})
+    if len(periods) < 2:
+        return {"available": False, "reason": "At least two distinct months are required."}
+    latest, prior = periods[-1], periods[-2]
+    def totals(period: str) -> dict[str, float]:
+        group = [r for r in rows if _month_key(r["date"]) == period]
+        income = sum(r["amount"] for r in group if r["type"] == "income")
+        expenses = sum(r["amount"] for r in group if r["type"] == "expense")
+        return {"revenue": round(income, 2), "expenses": round(expenses, 2), "net": round(income - expenses, 2)}
+    current, previous = totals(latest), totals(prior)
+    changes = {key: round((current[key] - previous[key]) / abs(previous[key]) * 100, 1) if previous[key] else None
+               for key in current}
+    return {"available": True, "current_period": latest, "previous_period": prior,
+            "current": current, "previous": previous, "change_pct": changes,
+            "note": "Compares the two latest months represented in the ledger; a partially recorded month is not adjusted for days elapsed."}
+
+
+def data_quality(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if not rows:
+        return {"transaction_count": 0, "currency_count": 0, "source_counts": {}, "issues": [],
+                "quality_score": 0, "note": "Import a ledger to run data-quality checks."}
+    issues = []
+    for field in ("date", "description", "vendor", "category", "currency"):
+        missing = sum(1 for r in rows if not str(r.get(field, "")).strip())
+        if missing:
+            issues.append({"field": field, "count": missing, "severity": "medium", "message": f"{missing} rows have missing {field} values."})
+    invalid = sum(1 for r in rows if not math.isfinite(float(r.get("amount", 0))) or float(r.get("amount", 0)) <= 0)
+    if invalid:
+        issues.append({"field": "amount", "count": invalid, "severity": "high", "message": f"{invalid} rows have invalid amounts."})
+    currencies = Counter(r.get("currency", "USD") for r in rows)
+    sources = Counter(r.get("source", "unknown") for r in rows)
+    quality = max(0, round(100 - sum(x["count"] for x in issues) / len(rows) * 100))
+    return {"transaction_count": len(rows), "currency_count": len(currencies), "currencies": dict(currencies),
+            "source_counts": dict(sources), "issues": issues, "quality_score": quality,
+            "duplicate_policy": "Exact date/vendor/amount/type/currency fingerprints are blocked at import time; duplicate rows are reported in import results.",
+            "note": "Quality score is a completeness/validity heuristic, not an audit or assurance rating."}
+
