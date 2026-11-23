@@ -56,7 +56,7 @@ jobs:
         working-directory: frontend
         run: |
           npm install
-          npm install --no-save --package-lock=false axe-core@4.10.3
+          npm install --no-save axe-core@4.10.3
       - name: Build production frontend
         working-directory: frontend
         env:
