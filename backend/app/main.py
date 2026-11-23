@@ -225,7 +225,11 @@ def get_forecast(horizon: int = 3):
 @app.get("/api/v1/health-score", tags=["intelligence"])
 def get_health_score():
     rows = _rows()
-    return health_score(rows, _signals(rows))
+    result = health_score(rows, _signals(rows))
+    if result.get("available"):
+        store.record_health_snapshot(result)
+    result["history"] = store.get_health_history()
+    return result
 
 
 @app.get("/api/v1/recommendations", tags=["intelligence"])
@@ -264,15 +268,22 @@ def get_alerts():
     states = store.get_alert_states()
     alerts = []
     for signal in signals:
-        alerts.append({**signal, "status": states.get(signal["id"], "open"), "source": "rule"})
+        alerts.append({**signal, "status": states.get(signal["id"], "open"), "source": "rule",
+                       "history": store.get_alert_history(signal["id"])})
     for result in anomaly.get("results", []):
         tx = result["transaction"]
         alert_id = f"ml-{tx['id']}"
         alerts.append({"id": alert_id, "title": "Unusual transaction pattern", "detail": result["explanation"],
                        "severity": result["severity"], "estimated_exposure": tx["amount"],
                        "evidence": [tx], "evidence_count": 1, "status": states.get(alert_id, "open"),
-                       "source": "isolation-forest", "score": result["score"]})
+                       "source": "ml-ensemble", "score": result["score"],
+                       "history": store.get_alert_history(alert_id)})
     return {"count": len(alerts), "alerts": alerts}
+
+
+@app.get("/api/v1/alerts/{alert_id}/history", tags=["intelligence"])
+def alert_history(alert_id: str):
+    return {"id": alert_id, "history": store.get_alert_history(alert_id)}
 
 
 @app.patch("/api/v1/alerts/{alert_id}", tags=["intelligence"])
