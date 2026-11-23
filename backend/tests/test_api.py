@@ -154,3 +154,21 @@ def test_demo_data_is_not_reseeded_after_workspace_is_cleared(tmp_path):
     assert store.list_transactions() == []
     store.seed_if_empty()
     assert store.list_transactions() == []
+
+
+def test_create_transaction_returns_created_row_when_backdated(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        payload = {
+            "date": "2026-01-01",
+            "description": "Backdated opening balance",
+            "vendor": "Opening Ledger",
+            "category": "Equity",
+            "amount": 500,
+            "type": "income",
+            "currency": "USD",
+        }
+        result = client.post("/api/v1/transactions", json=payload)
+        assert result.status_code == 200
+        assert result.json()["transaction"]["description"] == "Backdated opening balance"
+        assert result.json()["transaction"]["date"] == "2026-01-01"
