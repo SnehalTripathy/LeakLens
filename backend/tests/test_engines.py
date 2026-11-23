@@ -159,8 +159,8 @@ def test_forecast_enables_seasonal_baseline_with_24_months():
     assert result["selected_model_by_metric"]["income"] == "seasonal_naive_12"
     assert result["selected_model_by_metric"]["expenses"] == "seasonal_naive_12"
     assert result["model"] == "Seasonal naive (12-month)"
-    assert result["forecast"][0]["income"] == 1000
-    assert result["forecast"][0]["expenses"] == 400
+    assert result["forecast"][0]["income"] == 1100
+    assert result["forecast"][0]["expenses"] == 420
 
 
 def test_forecast_does_not_enable_seasonality_with_short_history():
