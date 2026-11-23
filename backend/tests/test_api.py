@@ -101,3 +101,11 @@ def test_import_preview_does_not_write_until_confirmed(tmp_path):
         assert after_preview == before
         imported = client.post("/api/v1/import", files={"file": ("preview.csv", csv, "text/csv")})
         assert imported.json()["inserted"] == 1
+
+def test_positive_only_import_requires_transaction_direction(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        csv = b"date,description,vendor,category,amount\\n2026-11-05,Office supplies,Paper Co,Operations,75\\n"
+        response = client.post("/api/v1/import/preview", files={"file": ("ambiguous.csv", csv, "text/csv")})
+        assert response.status_code == 400
+        assert "does not identify income versus expense" in response.json()["detail"]
