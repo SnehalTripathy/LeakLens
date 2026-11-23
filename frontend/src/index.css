@@ -170,3 +170,21 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .import-errors summary{cursor:pointer}
 .import-errors pre{max-height:160px;overflow:auto;white-space:pre-wrap;background:#0b0b0c;border:1px solid #3a3021;border-radius:7px;padding:10px;color:#d9c6a0;font-size:8px}
 @media(max-width:550px){.import-stats{grid-template-columns:repeat(2,1fr)}.import-modal{padding:14px}.import-preview-table table{min-width:700px}}
+
+
+/* Respect system motion preferences for users who request reduced animation. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+.settings-form{display:flex;flex-direction:column;gap:14px}
+.settings-form label{display:flex;flex-direction:column;gap:7px;color:#aeb2a5;font-size:10px}
+.settings-form input,.settings-form select{width:100%;min-height:38px;padding:9px 11px;border:1px solid #343731;border-radius:7px;background:#1b1d1a;color:#eef0e9;font-size:11px}
+.settings-form input:focus-visible,.settings-form select:focus-visible{outline:2px solid #c6f432;outline-offset:2px}
+.feedback-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid #292c27}
+.feedback-actions small{width:100%;color:#8b8f82;font-size:8px;letter-spacing:.4px}
+@media(max-width:520px){.settings-form .form-row{grid-template-columns:1fr}.feedback-actions .btn{flex:1 1 100%}}
