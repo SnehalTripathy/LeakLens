@@ -123,7 +123,7 @@ def _signals(rows=None):
 
 @app.get("/health", tags=["system"])
 def health():
-    return {"status": "ok", "service": "leaklens-api", "version": app.version}
+    return {"status": "ok", "service": "leaklens-api", "version": app.version, "database": "sqlite-local", "authentication": "disabled", "public_deployment_safe": False}
 
 
 @app.get("/api/v1", tags=["system"])
@@ -284,7 +284,7 @@ def put_budget(payload: BudgetInput):
 
 @app.get("/api/v1/leaks", tags=["intelligence"])
 def get_leaks():
-    signals = _signals()
+    signals = _signals(_analysis_rows())
     return {"count": len(signals), "signals": signals,
             "disclaimer": "These are rule-based indicators for human review, not confirmed losses or fraud."}
 
