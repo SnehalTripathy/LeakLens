@@ -20,9 +20,12 @@ LeakLens is a financial intelligence workspace for business transaction analysis
 - Isolation Forest + Local Outlier Factor anomaly comparison and contextual explanations.
 - Revenue/expense forecasts with linear, last-value, moving-average and 12-month seasonal-naive model selection (seasonality requires 24 contiguous months), backtest metrics and indicative uncertainty bands.
 - Transparent six-dimension health score, daily score history and evidence-linked recommendations.
-- What-if financial simulator, vendor and recurring subscription insights.
+- What-if financial simulator, vendor and recurring subscription insights with user-entered contract comparison.
+- Cash/accrual reporting view, fiscal-year configuration, category-to-account mappings and branch/location comparisons.
+- Human alert outcome feedback with carefully qualified reviewed-subset metrics.
 - Alert lifecycle with reopen and status history.
 - Data-grounded assistant, data-quality checks and CSV/PDF reports.
+- Local-only backup/restore, explicit-confirmation data deletion and manually applied retention policy; local admin endpoints are disabled by default.
 
 ## Public dataset research
 - Reproducible UCI Online Retail II cleaning, monthly/country/invoice aggregation and rolling-origin revenue forecast benchmarking: [`docs/PUBLIC_DATASET_STUDY.md`](docs/PUBLIC_DATASET_STUDY.md).
@@ -62,7 +65,7 @@ uvicorn app.main:app --reload --port 8000
 API health: http://localhost:8000/health  
 API docs: http://localhost:8000/docs
 
-The first API start creates a local SQLite database under `.data/` and seeds a six-month demo ledger. Imported and manually edited transactions persist in that local database.
+The first API start creates a local SQLite database under `.data/` and seeds a six-month demo ledger. Imported and manually edited transactions persist in that local database. Optional local-only backup, restore, manual retention and data deletion endpoints require `LEAKLENS_ENABLE_LOCAL_ADMIN=true` and a loopback client; keep this disabled for normal use.
 
 ## Tests
 ```bash
@@ -81,9 +84,9 @@ python -m pip install pip-audit
 pip-audit -r requirements.txt
 ```
 
-GitHub Actions runs backend tests, frontend tests and a TypeScript/Vite production build, plus npm and Python dependency audits, on pushes and pull requests to `main`.
+GitHub Actions runs backend tests, frontend tests/build and npm/Python dependency audits. A browser-release job also exercises import → detection → review → report with Playwright, runs axe WCAG checks, checks keyboard focus/mobile overflow and enforces a lightweight page-load budget.
 
-## Important deployment and privacy note
+## Local data administration\n\nSet `LEAKLENS_ENABLE_LOCAL_ADMIN=true` only while running the backend on a trusted loopback interface to enable `/api/v1/admin/backup`, `/api/v1/admin/restore`, `/api/v1/admin/retention/apply` and `/api/v1/admin/financial-data`. Each destructive action requires an exact confirmation phrase. The retention policy is manually applied, not scheduled. Keep the setting unset/false for normal use.\n\n## Important deployment and privacy note
 Authentication is intentionally disabled in v1.0. The current backend is a single-workspace local-development service. Do not expose it publicly with persistent financial uploads: without workspace isolation, visitors would share access to the same workspace. Before deployment, choose a protected/private anonymous-workspace design or convert the public instance into a read-only demo with no persistent user uploads. The backend also needs a production database; current SQLite storage is intended for local development.
 
 ## Deployment
