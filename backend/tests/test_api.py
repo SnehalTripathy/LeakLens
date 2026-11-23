@@ -20,6 +20,8 @@ def test_core_endpoints(tmp_path):
                          "/api/v1/health-score", "/api/v1/recommendations",
                          "/api/v1/vendors", "/api/v1/subscriptions", "/api/v1/alerts"]:
             assert client.get(endpoint).status_code == 200
+        anomaly = client.get("/api/v1/anomalies").json()
+        assert "Local Outlier Factor" in anomaly["models"]
         assert client.get("/api/v1/forecast").json()["available"] is True
 
 def test_import_validates_and_deduplicates(tmp_path):
@@ -59,6 +61,8 @@ def test_revenue_quality_budgets_and_period_comparison(tmp_path):
         saved = client.put("/api/v1/budgets", json={"category": "Marketing", "monthly_amount": 1500, "currency": "USD"})
         assert saved.status_code == 200
         assert any(x["category"] == "Marketing" for x in saved.json()["budgets"])
+        recs = client.get("/api/v1/recommendations").json()["recommendations"]
+        assert any("budget exceeded" in r["title"].lower() for r in recs)
 
 
 def test_transaction_update_and_delete(tmp_path):
