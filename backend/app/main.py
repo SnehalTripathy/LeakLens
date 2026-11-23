@@ -297,8 +297,8 @@ def get_alerts():
         tx = result["transaction"]
         alert_id = f"ml-{tx['id']}"
         alerts.append({"id": alert_id, "title": "Unusual transaction pattern", "detail": result["explanation"],
-                       "severity": result["severity"], "estimated_exposure": tx["amount"],
-                       "evidence": [tx], "evidence_count": 1, "status": states.get(alert_id, "open"),
+                       "severity": result["severity"], "estimated_exposure": 0,
+                       "amount_under_review": tx["amount"], "evidence": [tx], "evidence_count": 1, "status": states.get(alert_id, "open"),
                        "source": "ml-ensemble", "score": result["score"],
                        "history": store.get_alert_history(alert_id)})
     return {"count": len(alerts), "alerts": alerts}
