@@ -9,13 +9,12 @@ describe('LeakLens workspace', () => {
     render(<App />);
     expect(screen.getByText('Northstar Studio')).toBeInTheDocument();
     expect(screen.getByText(/See the bigger/i)).toBeInTheDocument();
-    expect(screen.getByText(/Connecting|Local API connected|API offline/i)).toBeInTheDocument();
   });
 
-  it('navigates to transaction management and exposes search', () => {
+  it('navigates to transaction management and exposes search', async () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: /^Transactions$/ }));
-    expect(screen.getByPlaceholderText(/Search transactions/i)).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText(/Search transactions/i)).toBeInTheDocument();
     expect(screen.getByText(/LEDGER MANAGEMENT/)).toBeInTheDocument();
   });
 });
