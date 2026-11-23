@@ -48,3 +48,29 @@ def test_report_download(tmp_path):
         assert csv.status_code == 200 and "text/csv" in csv.headers["content-type"]
         pdf = client.get("/api/v1/reports?format=pdf")
         assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+def test_revenue_quality_budgets_and_period_comparison(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        assert client.get("/api/v1/revenue").json()["total"] > 0
+        assert client.get("/api/v1/comparison").json()["available"] is True
+        quality = client.get("/api/v1/data-quality").json()
+        assert quality["transaction_count"] >= 50
+        saved = client.put("/api/v1/budgets", json={"category": "Marketing", "monthly_amount": 1500, "currency": "USD"})
+        assert saved.status_code == 200
+        assert any(x["category"] == "Marketing" for x in saved.json()["budgets"])
+
+
+def test_transaction_update_and_delete(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        tx = client.get("/api/v1/transactions").json()["transactions"][0]
+        payload = {k: tx[k] for k in ["date","description","vendor","category","amount","type","currency"]}
+        payload["description"] = "Edited from API test"
+        updated = client.put(f"/api/v1/transactions/{tx['id']}", json=payload)
+        assert updated.status_code == 200
+        fetched = client.get("/api/v1/transactions", params={"q": "Edited from API test"})
+        assert fetched.json()["count"] == 1
+        deleted = client.delete(f"/api/v1/transactions/{tx['id']}")
+        assert deleted.status_code == 200
+        assert client.delete(f"/api/v1/transactions/{tx['id']}").status_code == 404
