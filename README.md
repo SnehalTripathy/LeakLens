@@ -24,6 +24,10 @@ LeakLens is a financial intelligence workspace for business transaction analysis
 - Alert lifecycle with reopen and status history.
 - Data-grounded assistant, data-quality checks and CSV/PDF reports.
 
+## Local QA and sample import
+- Sample import file: [`samples/sample-transactions.csv`](../samples/sample-transactions.csv)
+- Manual browser, responsive, import, alert, report and persistence checks: [`docs/LOCAL_QA_CHECKLIST.md`](docs/LOCAL_QA_CHECKLIST.md)
+
 ## Repository structure
 - `frontend/` — React UI, design system, charts, interactions and API client.
 - `backend/` — FastAPI, SQLite local workspace store, financial analytics, anomaly and forecasting engines.
