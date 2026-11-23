@@ -256,3 +256,9 @@ def get_alert_history(alert_id: str) -> list[dict[str, Any]]:
             WHERE alert_id=? ORDER BY updated_at DESC LIMIT 100
         """, (alert_id,)).fetchall()
     return [{"status": row["status"], "updated_at": row["updated_at"]} for row in rows]
+
+
+def existing_fingerprints() -> set[str]:
+    with connect() as db:
+        rows = db.execute("SELECT fingerprint FROM transactions").fetchall()
+    return {row["fingerprint"] for row in rows}
