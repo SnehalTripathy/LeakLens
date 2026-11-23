@@ -83,6 +83,12 @@ class WorkspaceSettingsInput(BaseModel):
     timezone: str = Field(default="UTC", min_length=1, max_length=80)
 
 
+class AccountMappingInput(BaseModel):
+    category: str = Field(min_length=1, max_length=100)
+    account_code: str = Field(min_length=1, max_length=40)
+    account_name: str = Field(min_length=1, max_length=120)
+
+
 class AlertFeedbackInput(BaseModel):
     classification: Literal["confirmed_leak", "false_positive", "needs_more_evidence"]
     notes: str = Field(default="", max_length=1000)
@@ -141,7 +147,7 @@ def api_root():
 
 @app.get("/api/v1/transactions", tags=["transactions"])
 def get_transactions(q: str | None = None, kind: Literal["income", "expense"] | None = None,
-                     category: str | None = None, vendor: str | None = None):
+                     category: str | None = None, vendor: str | None = None, branch: str | None = None):
     rows = _rows()
     if q:
         needle = q.casefold()
@@ -152,6 +158,8 @@ def get_transactions(q: str | None = None, kind: Literal["income", "expense"] | 
         rows = [r for r in rows if r["category"].casefold() == category.casefold()]
     if vendor:
         rows = [r for r in rows if r["vendor"].casefold() == vendor.casefold()]
+    if branch:
+        rows = [r for r in rows if r.get("branch", "").casefold() == branch.casefold()]
     return {"count": len(rows), "transactions": rows}
 
 
@@ -413,6 +421,18 @@ def get_fiscal_year():
 def get_branches():
     return {"branches": store.get_branch_summary(),
             "note": "Only transactions with explicit branch/location values are included; unassigned transactions are excluded."}
+
+
+
+@app.get("/api/v1/account-mappings", tags=["analytics"])
+def get_account_mappings():
+    return {"mappings": store.get_account_mappings(),
+            "note": "Mappings are user-configured category-to-account labels. They are not independently certified accounting advice."}
+
+
+@app.put("/api/v1/account-mappings", tags=["analytics"])
+def put_account_mapping(payload: AccountMappingInput):
+    return {"mapping": store.set_account_mapping(payload.category, payload.account_code, payload.account_name)}
 
 
 @app.get("/api/v1/chart-of-accounts", tags=["analytics"])
