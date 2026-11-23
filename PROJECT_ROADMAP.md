@@ -113,7 +113,7 @@
 - [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend suite: 20 passing tests covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export and CSV/PDF reports.
+- [x] Backend suite: 21 passing tests covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export and CSV/PDF reports.
 - [x] Frontend render/navigation tests.
 - [x] GitHub Actions CI for frontend tests/build and backend tests.
 - [x] npm audit clean on upgraded Vite/Vitest toolchain.
