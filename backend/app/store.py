@@ -58,6 +58,24 @@ def init_db() -> None:
         db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_vendor ON transactions(vendor)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)")
         db.execute("""
+            CREATE TABLE IF NOT EXISTS health_score_history (
+                snapshot_date TEXT PRIMARY KEY,
+                score INTEGER NOT NULL,
+                label TEXT NOT NULL,
+                components_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS alert_status_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                alert_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_alert_history_id ON alert_status_history(alert_id, updated_at)")
+        db.execute("""
             CREATE TABLE IF NOT EXISTS budgets (
                 category TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'USD',
@@ -158,10 +176,13 @@ def clear_transactions() -> None:
 
 def update_alert_status(alert_id: str, status: str) -> None:
     with connect() as db:
+        timestamp = datetime.now(timezone.utc).isoformat()
         db.execute("""
             INSERT INTO alert_states(alert_id,status,updated_at) VALUES(?,?,?)
             ON CONFLICT(alert_id) DO UPDATE SET status=excluded.status, updated_at=excluded.updated_at
-        """, (alert_id, status, datetime.utcnow().isoformat()))
+        """, (alert_id, status, timestamp))
+        db.execute("INSERT INTO alert_status_history(alert_id,status,updated_at) VALUES(?,?,?)",
+                   (alert_id, status, timestamp))
 
 
 def get_alert_states() -> dict[str, str]:
@@ -204,3 +225,34 @@ def set_budget(category: str, currency: str, monthly_amount: float) -> None:
             INSERT INTO budgets(category,currency,monthly_amount,updated_at) VALUES(?,?,?,?)
             ON CONFLICT(category,currency) DO UPDATE SET monthly_amount=excluded.monthly_amount,updated_at=excluded.updated_at
         """, (category, currency, monthly_amount, datetime.now().astimezone().isoformat()))
+
+
+def record_health_snapshot(snapshot: dict[str, Any]) -> None:
+    snapshot_day = date.today().isoformat()
+    with connect() as db:
+        db.execute("""
+            INSERT INTO health_score_history(snapshot_date,score,label,components_json,created_at)
+            VALUES(?,?,?,?,?)
+            ON CONFLICT(snapshot_date) DO UPDATE SET score=excluded.score,label=excluded.label,
+                components_json=excluded.components_json,created_at=excluded.created_at
+        """, (snapshot_day, int(snapshot["score"]), str(snapshot["label"]),
+              json.dumps(snapshot.get("components", [])), datetime.now(timezone.utc).isoformat()))
+
+
+def get_health_history(limit: int = 90) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("""
+            SELECT snapshot_date,score,label,components_json FROM health_score_history
+            ORDER BY snapshot_date DESC LIMIT ?
+        """, (max(1, min(limit, 365)),)).fetchall()
+    return [{"date": row["snapshot_date"], "score": row["score"], "label": row["label"],
+             "components": json.loads(row["components_json"])} for row in reversed(rows)]
+
+
+def get_alert_history(alert_id: str) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("""
+            SELECT status,updated_at FROM alert_status_history
+            WHERE alert_id=? ORDER BY updated_at DESC LIMIT 100
+        """, (alert_id,)).fetchall()
+    return [{"status": row["status"], "updated_at": row["updated_at"]} for row in rows]
