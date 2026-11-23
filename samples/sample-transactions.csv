@@ -1,0 +1,11 @@
+date,description,vendor,category,amount,type,currency
+2026-11-01,Example client payment A,Example Client A,Sales,8500,income,USD
+2026-11-04,Example client payment B,Example Client B,Sales,6200,income,USD
+2026-06-12,Monthly cloud service,Sample Cloud Vendor,Technology,100,expense,USD
+2026-07-12,Monthly cloud service,Sample Cloud Vendor,Technology,100,expense,USD
+2026-08-12,Monthly cloud service,Sample Cloud Vendor,Technology,100,expense,USD
+2026-09-12,Monthly cloud service,Sample Cloud Vendor,Technology,100,expense,USD
+2026-10-12,Monthly cloud service,Sample Cloud Vendor,Technology,100,expense,USD
+2026-11-10,Cloud service renewal,Sample Cloud Vendor,Technology,100,expense,USD
+2026-11-12,Additional cloud payment,Sample Cloud Vendor,Technology,100,expense,USD
+2026-11-15,Unexpected cloud charge,Sample Cloud Vendor,Technology,250,expense,USD
