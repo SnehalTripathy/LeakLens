@@ -27,7 +27,7 @@
 - [x] SQLite local store, reproducible six-month demo ledger, budget storage and alert/health history.
 - [x] GitHub Actions workflow for backend tests, frontend tests, build and dependency audits.
 - [x] CI passed on dependency baseline `71c0b065`: Python tests, Python dependency audit, frontend tests, TypeScript/Vite production build and npm audit.
-- [x] Current code baseline has 20 backend tests passing; frontend tests and both dependency audits also pass in the verified runs.
+- [x] Current backend suite has 35 passing tests in the isolated development verification run; the latest GitHub Actions run after the new release job is the CI gate for the final integrated commit.
 - [ ] Run the app locally in a browser and complete manual visual QA.
 
 ## P1 — Data foundation
@@ -49,7 +49,9 @@
 - [x] Recurring/fixed-cost heuristics and subscription pattern view.
 - [x] Category budgets, month-to-date actuals, projected month-end and budget-overrun recommendations.
 - [x] CSV transaction export and PDF financial summary/monthly trend report.
-- [ ] Accounting-grade chart-of-accounts classifications, accrual/cash accounting selection and configurable fiscal periods.
+- [x] Configurable category-to-chart-of-accounts mappings; imported account codes/names are retained, unmapped rows stay visible, and mappings apply to existing and future transactions.
+- [x] Cash-basis or service-date accrual-view selection, plus configurable fiscal-year start month and fiscal-year summary endpoint. Accrual view falls back to transaction date when no service date is supplied.
+- [ ] Accountant review and reconciliation against varied real-world ledgers; the app does not certify accounting classifications or audited statements.
 - [ ] Manual reconciliation against varied business ledgers and accountant-reviewed expected outputs.
 
 ## P3 — Leak detection
@@ -59,7 +61,8 @@
 - [x] Vendor concentration and repeated small-charge signals.
 - [x] Possible duplicate vendor payments based on near-identical amounts within a three-day window.
 - [x] Severity, evidence records, estimated exposure, alert workflow and duplicate import detection.
-- [ ] Tune thresholds using labelled real business examples; measure false positives and false negatives before treating signals as operational controls. UCI Online Retail II has no fraud labels and is explicitly not used to claim fraud-detection performance.
+- [x] Capture human classifications for alert candidates (confirmed issue, false positive, needs more evidence), persist review notes, and report a clearly qualified reviewed-subset positive rate.
+- [ ] Tune thresholds using representative labelled business examples and measure system-wide false positives/negatives. Reviewed-subset positive rate is selection-biased; UCI Online Retail II has no fraud labels and is not used to claim fraud-detection performance.
 
 ## P4 — ML anomaly intelligence
 - [x] Features for transaction amount, timing, vendor frequency and category frequency.
@@ -67,7 +70,8 @@
 - [x] Relative percentile scores from both models and contextual explanations.
 - [x] Minimum-sample guard and explicit non-fraud disclaimer.
 - [ ] Supervised classification only after an adequately labelled dataset exists.
-- [ ] Measure precision/recall and calibrate alert thresholds with human-reviewed outcomes.
+- [x] Add persisted human review outcomes and a reviewed-subset precision proxy; recall is explicitly unavailable without independently labelled unflagged transactions.
+- [ ] Measure representative precision/recall and calibrate alert thresholds with independently human-reviewed flagged and unflagged outcomes.
 
 ## P5 — Predictive intelligence
 - [x] Revenue and expense trend forecast baseline.
@@ -93,9 +97,11 @@
 - [x] Recurring payment/subscription inference.
 - [x] Month-to-month financial comparison.
 - [x] Add customer-country revenue aggregation on UCI Online Retail II as a geography benchmark; explicitly not presented as branch comparisons.
-- [ ] Branch comparisons (requires actual branch/location identifiers in uploaded data).
+- [x] Add branch/location fields to import and transaction schema, branch/currency comparison API and Settings UI; only explicitly assigned branches are included.
+- [ ] Validate branch comparison with genuine multi-branch business ledgers.
 - [ ] External industry benchmarking (only after a credible, licensed benchmark dataset is selected).
-- [ ] Subscription usage/contract verification (requires usage, invoice or contract evidence).
+- [x] Add user-entered subscription contract records and compare expected billing cadence/amount with ledger-inferred recurring charges, with explicit evidence caveats.
+- [ ] Verify actual usage, invoice authenticity and contract entitlement only when those source records are supplied.
 
 ## P8 — Alerts and explainability
 - [x] In-app alert centre with open/reviewed/dismissed/resolved states.
@@ -111,11 +117,12 @@
 - [x] Interactive charts, search, date/category/type filters, import preview/confirmation, transaction CRUD, budgets, alert actions, simulator and downloads.
 - [x] Loading, empty, API-offline, error, success, confirmation and notification states.
 - [x] No sign-up, login or email workflow.
-- [ ] Manual accessibility review, keyboard-only pass, contrast audit and reduced-motion review.
+- [x] Add reduced-motion CSS support, visible keyboard focus styles, and automated axe WCAG checks in the browser-release workflow.
+- [ ] Complete manual accessibility review, full keyboard-only pass and human contrast review.
 - [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend suite: 26 passing tests in the current isolated verification run, covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export, public dataset processing and seasonal forecasting.
+- [x] Backend suite: 35 passing tests in the latest isolated verification run, covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export, public dataset processing, seasonal forecasting, account mappings, branch/fiscal settings, review feedback, contract comparison, privacy and backup/restore.
 - [x] Frontend render/navigation tests.
 - [x] GitHub Actions CI for frontend tests/build and backend tests.
 - [x] npm audit clean on upgraded Vite/Vitest toolchain.
@@ -127,9 +134,10 @@
 - [x] Add unit coverage for public-dataset cleaning, cancellation/refund arithmetic, country/month/invoice aggregation and rolling-origin forecast evaluation.
 - [x] Run full UCI dataset pipeline and preserve aggregated benchmark result artifacts; raw workbook and customer/invoice-level records are excluded from Git.
 - [x] Add automated tests for public-dataset processing and seasonal model eligibility/selection (15 focused engine + dataset tests passed in the isolated research environment).
-- [ ] Add full browser end-to-end tests for import → detect → review → report.
-- [ ] Add automated accessibility and performance checks.
-- [ ] Review business-data privacy, backup/restore, retention and deletion policies.
+- [x] Add Playwright browser workflow for import preview/confirmation → leak detection → alert review → CSV report download.
+- [x] Add automated axe WCAG scan, keyboard-focus check, mobile overflow check and page-load performance budget to the browser-release CI job.
+- [x] Add privacy summary endpoint, API security headers, local-only backup/restore, explicit-confirmation data deletion and manually applied retention policy. Local admin routes are disabled by default and loopback-gated.
+- [ ] Complete human privacy review and approve a real retention schedule; the retention setting is not automatically scheduled.
 - [ ] Select production persistence (managed PostgreSQL or an approved alternative); SQLite currently targets local development.
 - [ ] Complete manual regression, screenshots, release notes and final technical documentation.
 - **Release gate:** Do not mark v1.0 production-ready until the pending P10 checks are complete.
@@ -152,4 +160,5 @@ No third-party API key is required for the current local feature set. A producti
 ## Progress log
 - 2026-11-23: Implemented the core v1 feature set, import preview, sample data, duplicate-payment signals, alert/health histories, naive forecast benchmark and local seed persistence guard. Backend suite reached 20 passing tests; frontend tests/build and strict npm/Python audits passed. Manual browser/accessibility QA, real-world model tuning, production persistence and the no-login deployment decision remain.
 
-- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook in an isolated research runtime; committed non-identifying aggregated outputs and benchmark results. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added rolling-origin model selection to the app, with revenue and expenses evaluated independently; the in-app engine reproduces the same seasonal WAPE on the public benchmark. Full backend suite: 26 passed in isolated verification. Raw workbook and customer/invoice-level rows were not committed.
+- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook; committed aggregated outputs only. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added rolling-origin model selection to the app, independently for revenue and expenses.
+- 2026-11-23: Added chart-of-accounts mapping, cash/accrual view, fiscal-year settings, branch comparison, subscription contract comparison, alert feedback capture, reviewed-subset calibration metric, local backup/restore, confirmed deletion, manual retention execution, security headers, reduced-motion support and a Playwright/axe/performance browser-release job. Backend verification reached 35 passing tests. The final integrated GitHub Actions run is the remaining automated CI gate; manual browser/accessibility review and production database/privacy architecture remain user review items. Raw UCI workbook and customer/invoice-level rows were not committed.
