@@ -87,3 +87,17 @@ def test_transaction_update_and_delete(tmp_path):
         deleted = client.delete(f"/api/v1/transactions/{tx['id']}")
         assert deleted.status_code == 200
         assert client.delete(f"/api/v1/transactions/{tx['id']}").status_code == 404
+
+def test_import_preview_does_not_write_until_confirmed(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        before = client.get("/api/v1/transactions").json()["count"]
+        csv = b"date,description,vendor,category,amount,type,currency\\n2026-11-03,Preview only,Preview Vendor,Operations,75,expense,USD\\n"
+        preview = client.post("/api/v1/import/preview", files={"file": ("preview.csv", csv, "text/csv")})
+        assert preview.status_code == 200
+        assert preview.json()["estimated_new_rows"] == 1
+        assert "Preview only" in preview.json()["preview"][0]["description"]
+        after_preview = client.get("/api/v1/transactions").json()["count"]
+        assert after_preview == before
+        imported = client.post("/api/v1/import", files={"file": ("preview.csv", csv, "text/csv")})
+        assert imported.json()["inserted"] == 1
