@@ -27,6 +27,7 @@
 - [x] SQLite local store, reproducible six-month demo ledger, budget storage and alert/health history.
 - [x] GitHub Actions workflow for backend tests, frontend tests, build and dependency audits.
 - [x] CI passed on dependency baseline `71c0b065`: Python tests, Python dependency audit, frontend tests, TypeScript/Vite production build and npm audit.
+- [x] Current code baseline has 20 backend tests passing; frontend tests and both dependency audits also pass in the verified runs.
 - [ ] Run the app locally in a browser and complete manual visual QA.
 
 ## P1 — Data foundation
@@ -56,6 +57,7 @@
 - [x] Category spend increases against prior-month baselines.
 - [x] Recurring vendor charge price increases.
 - [x] Vendor concentration and repeated small-charge signals.
+- [x] Possible duplicate vendor payments based on near-identical amounts within a three-day window.
 - [x] Severity, evidence records, estimated exposure, alert workflow and duplicate import detection.
 - [ ] Tune thresholds using labelled real business examples; measure false positives and false negatives before treating signals as operational controls.
 
@@ -73,7 +75,8 @@
 - [x] Held-out backtest MAE when enough months exist.
 - [x] Indicative residual bands and insufficient-history state.
 - [x] What-if revenue/expense/one-off-cost scenario simulator.
-- [ ] Compare naive, seasonal and additional forecasting methods; publish separate per-metric backtest results and limitations.
+- [x] Linear trend model compared with last-observation naive baseline; revenue/expense MAE and held-out month counts are returned separately.
+- [ ] Compare seasonal and additional forecasting methods; validate performance across multiple real business datasets.
 - [ ] Validate forecast stability across multiple real businesses and seasonal periods.
 
 ## P6 — Business health and recommendations
@@ -110,12 +113,15 @@
 - [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend test coverage for service endpoints, imports, validation, deduplication, budgets, transaction CRUD, simulator, assistant, health/alert history and CSV/PDF reports.
+- [x] Backend suite: 20 passing tests covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export and CSV/PDF reports.
 - [x] Frontend render/navigation tests.
 - [x] GitHub Actions CI for frontend tests/build and backend tests.
 - [x] npm audit clean on upgraded Vite/Vitest toolchain.
 - [x] pip-audit clean after upgrading FastAPI, Starlette, python-multipart and the Starlette test client dependency.
 - [x] Input limits, Pydantic validation, CORS allowlist, secret examples, SQLite ignore rules and CSV formula-injection mitigation.
+- [x] Backend end-to-end integration test for import → detect → review → report.
+- [x] Deterministic financial-engine unit tests and frontend navigation coverage for all workspace modules.
+- [x] Local QA checklist and sample import ledger are documented.
 - [ ] Add full browser end-to-end tests for import → detect → review → report.
 - [ ] Add automated accessibility and performance checks.
 - [ ] Review business-data privacy, backup/restore, retention and deletion policies.
@@ -135,4 +141,4 @@
 No third-party API key is required for the current local feature set. A production database URL and hosting access will be needed only after the infrastructure/privacy model is approved. Never commit credentials.
 
 ## Progress log
-- 2026-11-23: Implemented the complete core v1 feature set, updated the design system and no-auth flow, added import preview and workflow history, and passed backend/frontend CI plus Python/npm dependency audits on the pinned dependency baseline. Final UI changes are in subsequent CI runs; manual browser QA and production release gates remain.
+- 2026-11-23: Implemented the core v1 feature set, import preview, sample data, duplicate-payment signals, alert/health histories, naive forecast benchmark and local seed persistence guard. Backend suite reached 20 passing tests; frontend tests/build and strict npm/Python audits passed. Manual browser/accessibility QA, real-world model tuning, production persistence and the no-login deployment decision remain.
