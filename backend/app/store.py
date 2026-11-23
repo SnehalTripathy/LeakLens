@@ -404,7 +404,8 @@ def get_alert_feedback_metrics() -> dict[str, Any]:
     false_positive = counts.get("false_positive", 0)
     adjudicated = confirmed + false_positive
     return {"counts": counts, "adjudicated_reviews": adjudicated,
-            "observed_precision_pct": round(confirmed / adjudicated * 100, 2) if adjudicated else None,
+            "reviewed_subset_precision_pct": round(confirmed / adjudicated * 100, 2) if adjudicated else None,
+            "precision_scope_note": "Positive rate among alerts adjudicated as confirmed issue or false positive only; selection-biased and not system-wide precision.",
             "recall_pct": None,
             "recall_note": "Recall cannot be calculated from alert feedback alone because unflagged transactions have not been independently labelled.",
             "recent_feedback": [dict(row) for row in latest]}
