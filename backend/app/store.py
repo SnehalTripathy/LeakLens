@@ -68,6 +68,14 @@ def init_db() -> None:
             if name not in columns:
                 db.execute(f"ALTER TABLE transactions ADD COLUMN {name} {definition}")
         db.execute("""
+            CREATE TABLE IF NOT EXISTS account_mappings (
+                category TEXT PRIMARY KEY,
+                account_code TEXT NOT NULL,
+                account_name TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        db.execute("""
             CREATE TABLE IF NOT EXISTS workspace_settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -203,6 +211,11 @@ def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
             clean = dict(row)
             clean.setdefault("currency", "USD")
             clean.setdefault("source", "import")
+            if not clean.get("account_code") or not clean.get("account_name"):
+                mapping = get_account_mapping(clean.get("category", ""))
+                if mapping:
+                    clean["account_code"] = clean.get("account_code") or mapping["account_code"]
+                    clean["account_name"] = clean.get("account_name") or mapping["account_name"]
             clean["id"] = clean.get("id") or fingerprint(clean)[:16]
             fp = fingerprint(clean)
             try:
@@ -429,3 +442,27 @@ def delete_financial_data() -> dict[str, int]:
         db.execute("INSERT OR REPLACE INTO app_meta(key,value,updated_at) VALUES(?,?,?)",
                    ("demo_seeded", "user_data_deleted", datetime.now(timezone.utc).isoformat()))
     return counts
+
+
+def get_account_mappings() -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT category,account_code,account_name,updated_at FROM account_mappings ORDER BY category").fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_account_mapping(category: str) -> dict[str, Any] | None:
+    with connect() as db:
+        row = db.execute("SELECT category,account_code,account_name,updated_at FROM account_mappings WHERE category=? COLLATE NOCASE", (category.strip(),)).fetchone()
+    return dict(row) if row else None
+
+
+def set_account_mapping(category: str, account_code: str, account_name: str) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as db:
+        db.execute("""INSERT INTO account_mappings(category,account_code,account_name,updated_at)
+            VALUES(?,?,?,?) ON CONFLICT(category) DO UPDATE SET account_code=excluded.account_code,
+            account_name=excluded.account_name,updated_at=excluded.updated_at""",
+            (category.strip(), account_code.strip(), account_name.strip(), now))
+        db.execute("""UPDATE transactions SET account_code=?,account_name=?
+            WHERE category=? COLLATE NOCASE""", (account_code.strip(), account_name.strip(), category.strip()))
+    return get_account_mapping(category) or {}
