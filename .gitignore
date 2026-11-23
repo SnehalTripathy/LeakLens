@@ -16,4 +16,5 @@ venv/
 .DS_Store
 *.log
 uploads/
+.data/
 backend/.data/
