@@ -19,7 +19,7 @@ ALIASES = {
     "amount": ["amount", "value", "total", "transaction_amount"],
     "debit": ["debit", "withdrawal", "money_out"],
     "credit": ["credit", "deposit", "money_in"],
-    "type": ["direction", "transaction_type", "income_expense", "kind"],
+    "type": ["type", "direction", "transaction_type", "income_expense", "kind"],
     "currency": ["currency", "ccy"],
 }
 
