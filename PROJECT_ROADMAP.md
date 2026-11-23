@@ -1,138 +1,138 @@
 # LeakLens — Master Project Roadmap
 
-**Product:** Financial intelligence and hidden-loss detection  
+**Product:** Financial intelligence and hidden-loss detection platform  
 **Version:** 1.0  
-**Development policy:** Complete implementation and validation before any deployment. Netlify is reserved for the final frontend deployment step.
+**Development policy:** Complete implementation and validation before deployment. Netlify is reserved for the final frontend deployment step.
 
 ## Locked product decisions
 - React + Vite + TypeScript frontend; Python + FastAPI backend.
 - Brand system: Midnight Black `#0B0B0C`, Pure White `#FFFFFF`, Electric Lime `#C6F432`; functional accents Graphite `#202124`, Muted Sage `#8B8F82`, Amber `#FFB84D`.
 - No sign-up, login, password, or email collection in v1.0.
-- Local demo business and CSV/XLSX imports; SQLite is the current local persistence adapter.
-- Multiple currencies are not converted or summed together. Analytics use the workspace's most common currency and the data-quality view reports currency counts.
+- Local demo business and CSV/XLS/XLSX imports; SQLite is the current local persistence adapter.
+- Multiple currencies are not converted or summed together. Analytics use the workspace's most common currency and the UI warns when more than one currency is present.
 - An anomaly is not automatically fraud; estimated exposure is not confirmed loss or guaranteed savings.
-- The assistant is currently deterministic and ledger-grounded; no external LLM or API key is used.
+- The assistant is deterministic and ledger-grounded; no external LLM or API key is used.
 - No deployment until P0–P10 acceptance criteria pass.
 
 ## Status key
-- **Implemented:** code is in the repository.
-- **CI checked:** latest GitHub Actions run for that commit passed.
-- **Pending validation:** requires manual browser testing, real-world data, expanded tests, or a production decision.
+- **Implemented:** code is committed.
+- **CI checked:** GitHub Actions passed for the referenced dependency/feature baseline.
+- **Pending validation:** needs manual browser QA, varied real-world data, additional evaluation, production architecture or explicit user approval.
 
 ## P0 — Foundation
-- [x] GitHub repository, README, roadmap and ignore rules.
-- [x] React + Vite + TypeScript application shell and responsive layouts.
-- [x] Black/white/lime design system, hover/active/focus states and motion.
-- [x] FastAPI service, versioned endpoints and local CORS configuration.
-- [x] Local SQLite store, six-month deterministic demo ledger and alert/budget state.
-- [x] GitHub Actions CI for backend tests, frontend tests and TypeScript/Vite build.
-- [x] CI has reported green backend and frontend test/build jobs on commit `856d936`; later changes are being checked in subsequent runs.
-- [ ] Local manual browser run on the user's machine.
+- [x] Initialize repository, README, roadmap and ignore rules.
+- [x] React + Vite + TypeScript frontend and responsive application shell.
+- [x] Black/white/lime design system, typography, hover/active/focus states, motion and mobile navigation.
+- [x] FastAPI service, versioned API, configurable CORS and OpenAPI documentation.
+- [x] SQLite local store, reproducible six-month demo ledger, budget storage and alert/health history.
+- [x] GitHub Actions workflow for backend tests, frontend tests, build and dependency audits.
+- [x] CI passed on dependency baseline `71c0b065`: Python tests, Python dependency audit, frontend tests, TypeScript/Vite production build and npm audit.
+- [ ] Run the app locally in a browser and complete manual visual QA.
 
 ## P1 — Data foundation
 - [x] Canonical transaction schema and API validation.
-- [x] CSV/XLS/XLSX ingestion with column auto-mapping.
-- [x] Date, currency and debit/credit normalization.
-- [x] Row-level validation errors, within-file duplicate checks and workspace deduplication.
-- [x] 10 MB upload read limit and import row/error summary.
-- [x] Data-quality report and reproducible six-month demo dataset.
-- [x] Transaction create, edit, delete, search and filtering by type/category/date.
-- [ ] Import preview/column mapping confirmation UI before committing rows.
-- [ ] Real bank-export compatibility testing across several sample formats.
+- [x] CSV/XLS/XLSX ingestion with automatic column mapping.
+- [x] Date, currency, debit/credit and transaction-direction normalization.
+- [x] Reject ambiguous positive-only amount files when income/expense direction cannot be determined.
+- [x] Row-level validation errors, within-file duplicate detection and workspace fingerprint deduplication.
+- [x] Non-destructive import preview with mapped columns, first-row sample, invalid rows and duplicate counts; explicit confirmation before insert.
+- [x] 10 MB import limit and six-month reproducible demo ledger.
+- [x] Data-quality view and source/currency counts.
+- [x] Transaction create, edit, delete, search, type/category/date filters.
+- [ ] Test compatibility against a broader set of real bank/accounting exports (headers, date formats, debit/credit conventions and encodings).
 
 ## P2 — Financial analytics
 - [x] Revenue, expenses, net movement and profit-margin calculations.
-- [x] Monthly revenue/expense aggregation and latest-period comparison.
-- [x] Category and vendor spend analysis.
+- [x] Monthly revenue/expense aggregation and latest-month comparison.
+- [x] Category, vendor and revenue-source analysis.
 - [x] Recurring/fixed-cost heuristics and subscription pattern view.
 - [x] Category budgets, month-to-date actuals, projected month-end and budget-overrun recommendations.
-- [x] CSV ledger export and PDF financial summary.
-- [ ] Accounting-grade P&L classification and configurable financial periods.
-- [ ] Manual reconciliation against varied real-world business ledgers.
+- [x] CSV transaction export and PDF financial summary/monthly trend report.
+- [ ] Accounting-grade chart-of-accounts classifications, accrual/cash accounting selection and configurable fiscal periods.
+- [ ] Manual reconciliation against varied business ledgers and accountant-reviewed expected outputs.
 
 ## P3 — Leak detection
-- [x] Rule-based vendor payment spikes.
-- [x] Category spend increases against recent monthly baselines.
-- [x] Recurring vendor charge increases.
+- [x] Vendor payment spikes against historical baseline.
+- [x] Category spend increases against prior-month baselines.
+- [x] Recurring vendor charge price increases.
 - [x] Vendor concentration and repeated small-charge signals.
-- [x] Severity, evidence records, estimated exposure and alert review lifecycle.
-- [x] Duplicate prevention and import duplicate reporting.
-- [ ] Tune rule thresholds against labelled real business examples and measure false positives.
+- [x] Severity, evidence records, estimated exposure, alert workflow and duplicate import detection.
+- [ ] Tune thresholds using labelled real business examples; measure false positives and false negatives before treating signals as operational controls.
 
 ## P4 — ML anomaly intelligence
-- [x] Feature engineering for amount, timing, vendor frequency and category frequency.
+- [x] Features for transaction amount, timing, vendor frequency and category frequency.
 - [x] Isolation Forest and Local Outlier Factor comparison.
-- [x] Relative percentile score breakdown and contextual explanations.
+- [x] Relative percentile scores from both models and contextual explanations.
 - [x] Minimum-sample guard and explicit non-fraud disclaimer.
-- [ ] Train/evaluate a supervised classifier only after an adequately labelled dataset exists.
-- [ ] Measure precision/recall and calibrate thresholds with reviewed outcomes.
+- [ ] Supervised classification only after an adequately labelled dataset exists.
+- [ ] Measure precision/recall and calibrate alert thresholds with human-reviewed outcomes.
 
 ## P5 — Predictive intelligence
-- [x] Revenue and expense trend forecasts.
-- [x] Up to three monthly forecast steps (approximately 30/60/90 days depending on calendar boundaries).
-- [x] Held-out backtest MAE when enough history exists.
+- [x] Revenue and expense trend forecast baseline.
+- [x] Up to three future monthly steps (roughly 30/60/90 days depending on calendar boundaries).
+- [x] Held-out backtest MAE when enough months exist.
 - [x] Indicative residual bands and insufficient-history state.
-- [x] What-if revenue/expense/one-off-cost scenario calculator.
-- [ ] Compare additional seasonal/naive forecasting baselines and publish per-metric backtest results.
-- [ ] Validate forecast quality on multiple real business datasets.
+- [x] What-if revenue/expense/one-off-cost scenario simulator.
+- [ ] Compare naive, seasonal and additional forecasting methods; publish separate per-metric backtest results and limitations.
+- [ ] Validate forecast stability across multiple real businesses and seasonal periods.
 
 ## P6 — Business health and recommendations
-- [x] Transparent weighted health score with six dimensions and explanations.
-- [x] Signal-linked recommendations with evidence and estimated potential exposure.
-- [x] Budget-aware cost-control recommendations.
+- [x] Transparent weighted health score with six explained dimensions.
+- [x] Daily score snapshots and history chart (history starts when the first snapshot is recorded; no historical scores are fabricated).
+- [x] Signal-linked and budget-aware recommendations with evidence and estimated impact.
 - [x] Vendor dependency review recommendation.
-- [ ] Persist and display historical health-score trends.
-- [ ] Validate score weights with business domain examples; score is not an audit, credit or investment rating.
+- [ ] Validate score weights and category thresholds with real business examples. The score is not an audit, credit or investment rating.
 
 ## P7 — Advanced intelligence
 - [x] What-if financial simulator.
 - [x] Vendor concentration and cost analysis.
 - [x] Recurring payment/subscription inference.
 - [x] Month-to-month financial comparison.
-- [ ] Branch comparisons (requires branch identifiers in source data).
-- [ ] External industry benchmarking (only after sourcing a credible benchmark dataset).
-- [ ] Subscription usage/contract verification (requires usage or contract evidence).
+- [ ] Branch comparisons (requires branch/location identifiers in uploaded data).
+- [ ] External industry benchmarking (only after a credible, licensed benchmark dataset is selected).
+- [ ] Subscription usage/contract verification (requires usage, invoice or contract evidence).
 
 ## P8 — Alerts and explainability
 - [x] In-app alert centre with open/reviewed/dismissed/resolved states.
+- [x] Mark reviewed, dismiss, resolve and reopen actions.
+- [x] Persistent status history/audit trail for alert changes.
 - [x] Evidence inspection and contextual anomaly factors.
-- [x] Deterministic assistant answers grounded in current ledger metrics.
-- [x] Assistant displays evidence payloads and uses no external AI provider.
-- [ ] Reopen alert action and alert history timeline.
-- [ ] Optional LLM-based assistant only after explicit provider/key approval and data privacy review.
+- [x] Deterministic assistant answers grounded in current ledger metrics with evidence payloads.
+- [ ] Optional LLM assistant only after explicit provider/key approval, data-retention review and safeguards; not required for the current v1 implementation.
 
 ## P9 — React product experience
 - [x] Navigation screens for overview, transactions, revenue, expenses, leak detection, ML anomalies, forecasting, health, recommendations, simulator, vendors, subscriptions, alerts, assistant, reports, data quality and settings.
-- [x] Responsive sidebar/layouts for desktop and smaller screens.
-- [x] Interactive chart tooltips, search, filters, import/export, transaction CRUD, budgets, alert actions and simulator.
-- [x] Loading, empty, error/offline, success and notification states.
+- [x] Responsive desktop/tablet/mobile layouts and compact navigation.
+- [x] Interactive charts, search, date/category/type filters, import preview/confirmation, transaction CRUD, budgets, alert actions, simulator and downloads.
+- [x] Loading, empty, API-offline, error, success, confirmation and notification states.
 - [x] No sign-up, login or email workflow.
-- [ ] Manual accessibility review, keyboard-only pass and contrast audit.
-- [ ] Cross-browser and mobile-device visual QA.
+- [ ] Manual accessibility review, keyboard-only pass, contrast audit and reduced-motion review.
+- [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend API tests for core endpoints, imports, deduplication, budgets, transaction CRUD, simulator, assistant and CSV/PDF reports.
-- [x] Frontend component/navigation tests.
-- [x] GitHub Actions backend/frontend CI pipeline.
-- [x] Input limits, Pydantic validation, CORS allowlist setting, local secret examples, SQLite ignore rules and CSV formula-injection mitigation.
-- [ ] Confirm green CI after the latest frontend/ML refinements.
-- [ ] Review npm dependency audit results and remediate all high/critical advisories.
-- [ ] Add full end-to-end tests for import → detect → review → report.
-- [ ] Add automated security, accessibility and performance checks.
-- [ ] Choose/implement production persistence (managed PostgreSQL or an approved alternative); current SQLite adapter is local-development focused.
-- [ ] Complete final docs, screenshots, release notes and regression checklist.
-- **Release gate:** Do not mark the project complete until the pending P10 checks are resolved.
+- [x] Backend test coverage for service endpoints, imports, validation, deduplication, budgets, transaction CRUD, simulator, assistant, health/alert history and CSV/PDF reports.
+- [x] Frontend render/navigation tests.
+- [x] GitHub Actions CI for frontend tests/build and backend tests.
+- [x] npm audit clean on upgraded Vite/Vitest toolchain.
+- [x] pip-audit clean after upgrading FastAPI, Starlette, python-multipart and the Starlette test client dependency.
+- [x] Input limits, Pydantic validation, CORS allowlist, secret examples, SQLite ignore rules and CSV formula-injection mitigation.
+- [ ] Add full browser end-to-end tests for import → detect → review → report.
+- [ ] Add automated accessibility and performance checks.
+- [ ] Review business-data privacy, backup/restore, retention and deletion policies.
+- [ ] Select production persistence (managed PostgreSQL or an approved alternative); SQLite currently targets local development.
+- [ ] Complete manual regression, screenshots, release notes and final technical documentation.
+- **Release gate:** Do not mark v1.0 production-ready until the pending P10 checks are complete.
 
 ## P11 — Deployment (last step only)
-- [ ] User approves deployment architecture, including the unauthenticated data-access/privacy model.
-- [ ] Decide whether the public instance is a read-only demo or a private single-workspace app. A public no-login API with persistent financial uploads would expose one shared workspace and is not safe to launch as-is.
-- [ ] Deploy FastAPI backend to a Python-capable host with persistent database storage.
-- [ ] Configure API URL, CORS, environment variables and backups.
+- [ ] User approves deployment architecture and the no-login data-access model.
+- [ ] Choose between a read-only public demo or a private/isolated workspace model. A public unauthenticated API with persistent financial uploads would expose one shared workspace and is unsafe to launch as-is.
+- [ ] Deploy FastAPI backend to Python-capable hosting with persistent database storage.
+- [ ] Configure API URL, CORS, environment variables, backups and monitoring.
 - [ ] Deploy React frontend to Netlify only after P0–P10 are complete.
-- [ ] Verify live workflows, data persistence, upload handling and secret/privacy boundaries.
+- [ ] Verify live workflows, persistence, uploads and privacy boundaries.
 
 ## Credentials and permissions
-No external API key is required for local v1 development. A database connection string/hosting access will only be needed when the production infrastructure is deliberately selected. Never commit secrets.
+No third-party API key is required for the current local feature set. A production database URL and hosting access will be needed only after the infrastructure/privacy model is approved. Never commit credentials.
 
 ## Progress log
-- 2026-11-23: Initialized the empty GitHub repository and implemented the first full v1 feature pass. CI passed on intermediate commits; final checks after the most recent changes are pending.
+- 2026-11-23: Implemented the complete core v1 feature set, updated the design system and no-auth flow, added import preview and workflow history, and passed backend/frontend CI plus Python/npm dependency audits on the pinned dependency baseline. Final UI changes are in subsequent CI runs; manual browser QA and production release gates remain.
