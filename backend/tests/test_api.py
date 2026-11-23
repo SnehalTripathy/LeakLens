@@ -22,6 +22,15 @@ def test_core_endpoints(tmp_path):
             assert client.get(endpoint).status_code == 200
         anomaly = client.get("/api/v1/anomalies").json()
         assert "Local Outlier Factor" in anomaly["models"]
+        health = client.get("/api/v1/health-score").json()
+        assert health["available"] is True
+        assert len(health["history"]) == 1
+        alerts = client.get("/api/v1/alerts").json()["alerts"]
+        if alerts:
+            alert_id = alerts[0]["id"]
+            assert client.patch(f"/api/v1/alerts/{alert_id}", json={"status": "reviewed"}).status_code == 200
+            history = client.get(f"/api/v1/alerts/{alert_id}/history").json()["history"]
+            assert history[-1]["status"] == "reviewed"
         assert client.get("/api/v1/forecast").json()["available"] is True
 
 def test_import_validates_and_deduplicates(tmp_path):
