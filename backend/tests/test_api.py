@@ -218,7 +218,7 @@ def test_alert_feedback_metrics_are_not_misrepresented_as_recall(tmp_path):
         assert saved.status_code == 200
         metrics = client.get("/api/v1/alert-feedback/metrics").json()
         assert metrics["counts"]["false_positive"] == 1
-        assert metrics["observed_precision_pct"] == 0
+        assert metrics["reviewed_subset_precision_pct"] == 0
         assert metrics["recall_pct"] is None
         assert "unflagged transactions" in metrics["recall_note"]
 
@@ -258,3 +258,40 @@ def test_local_backup_and_confirmed_delete_are_loopback_gated(tmp_path, monkeypa
                                 params={"confirmation": "DELETE MY LEAKLENS DATA"})
         assert deleted.status_code == 200
         assert client.get("/api/v1/transactions").json()["count"] == 0
+
+
+def test_category_account_mapping_applies_to_existing_and_future_rows(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        saved = client.put("/api/v1/account-mappings", json={
+            "category": "Marketing", "account_code": "6200", "account_name": "Advertising and Promotion"
+        })
+        assert saved.status_code == 200
+        existing = next(row for row in store.list_transactions() if row["category"] == "Marketing")
+        assert existing["account_code"] == "6200"
+        assert existing["account_name"] == "Advertising and Promotion"
+
+        csv = b"date,description,vendor,category,amount,type,currency\\n2026-11-20,Campaign,Ad Vendor,Marketing,45,expense,USD\\n"
+        imported = client.post("/api/v1/import", files={"file": ("mapped.csv", csv, "text/csv")})
+        assert imported.status_code == 200
+        row = next(row for row in store.list_transactions() if row["vendor"] == "Ad Vendor")
+        assert row["account_code"] == "6200"
+        assert row["account_name"] == "Advertising and Promotion"
+
+
+def test_local_backup_can_restore_valid_sqlite_snapshot(tmp_path, monkeypatch):
+    setup_workspace(tmp_path)
+    monkeypatch.setenv("LEAKLENS_ENABLE_LOCAL_ADMIN", "true")
+    with TestClient(app) as client:
+        before = client.get("/api/v1/transactions").json()["count"]
+        backup = client.get("/api/v1/admin/backup")
+        assert backup.status_code == 200
+        deleted = client.delete("/api/v1/admin/financial-data",
+                                params={"confirmation": "DELETE MY LEAKLENS DATA"})
+        assert deleted.status_code == 200
+        assert client.get("/api/v1/transactions").json()["count"] == 0
+        restored = client.post("/api/v1/admin/restore",
+                               params={"confirmation": "RESTORE LEAKLENS DATABASE"},
+                               files={"file": ("backup.sqlite3", backup.content, "application/octet-stream")})
+        assert restored.status_code == 200
+        assert restored.json()["transaction_count"] == before
