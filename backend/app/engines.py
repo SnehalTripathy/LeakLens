@@ -292,21 +292,28 @@ def anomaly_detection(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "model": "Isolation Forest", "results": []}
     try:
         from sklearn.ensemble import IsolationForest
+        from sklearn.neighbors import LocalOutlierFactor
         vendors = Counter(r["vendor"] for r in expenses)
         categories = Counter(r["category"] for r in expenses)
         x = np.array([[math.log1p(r["amount"]), pd.to_datetime(r["date"]).day,
                        pd.to_datetime(r["date"]).dayofweek,
                        math.log1p(vendors[r["vendor"]]), math.log1p(categories[r["category"]])]
                       for r in expenses], dtype=float)
-        model = IsolationForest(n_estimators=250, contamination="auto", random_state=42)
-        model.fit(x)
-        raw = -model.score_samples(x)
-        ranks = pd.Series(raw).rank(pct=True).to_numpy()
+        isolation = IsolationForest(n_estimators=250, contamination="auto", random_state=42)
+        isolation.fit(x)
+        isolation_raw = -isolation.score_samples(x)
+        isolation_ranks = pd.Series(isolation_raw).rank(pct=True).to_numpy()
+        lof_neighbors = min(20, max(2, len(expenses) - 1))
+        lof = LocalOutlierFactor(n_neighbors=lof_neighbors, contamination="auto")
+        lof.fit_predict(x)
+        lof_raw = -lof.negative_outlier_factor_
+        lof_ranks = pd.Series(lof_raw).rank(pct=True).to_numpy()
+        combined = np.maximum(isolation_ranks, lof_ranks)
         results = []
         amount_values = np.array([r["amount"] for r in expenses], dtype=float)
         amount_median = float(np.median(amount_values))
         day_counts = Counter(pd.to_datetime(r["date"]).day for r in expenses)
-        for row, score in zip(expenses, ranks):
+        for index, (row, score) in enumerate(zip(expenses, combined)):
             if score >= 0.88:
                 severity = "high" if score >= 0.97 else "medium"
                 factors = []
@@ -321,13 +328,15 @@ def anomaly_detection(rows: list[dict[str, Any]]) -> dict[str, Any]:
                     factors.append("Transaction day-of-month is uncommon in this dataset.")
                 explanation = " ".join(factors) or "The combination of amount, timing and vendor/category frequency differs from the modelled transaction pattern."
                 results.append({"transaction": row, "score": round(float(score * 100), 1), "severity": severity,
-                                "explanation": explanation,
-                                "contextual_checks": factors,
-                                "score_interpretation": "Percentile ranking within this workspace's current expense sample; not a probability of fraud.",
-                                "model": "Isolation Forest"})
-        return {"available": True, "model": "Isolation Forest", "sample_size": len(expenses),
-                "flagged_count": len(results), "results": sorted(results, key=lambda x: x["score"], reverse=True)[:30],
-                "note": "Unsupervised anomaly scores indicate unusual patterns, not fraud or confirmed loss."}
+                                "explanation": explanation, "contextual_checks": factors,
+                                "model_scores": {"isolation_forest_percentile": round(float(isolation_ranks[index] * 100), 1),
+                                                 "local_outlier_factor_percentile": round(float(lof_ranks[index] * 100), 1)},
+                                "score_interpretation": "Maximum percentile rank from two unsupervised models within this workspace's current expense sample; not a probability of fraud.",
+                                "model": "Isolation Forest + Local Outlier Factor"})
+        return {"available": True, "model": "Isolation Forest + Local Outlier Factor", "sample_size": len(expenses),
+                "flagged_count": len(results), "models": ["Isolation Forest", "Local Outlier Factor"],
+                "results": sorted(results, key=lambda x: x["score"], reverse=True)[:30],
+                "note": "Unsupervised anomaly scores indicate unusual patterns, not fraud or confirmed loss. Percentiles are relative to this workspace sample and are not calibrated probabilities."}
     except Exception as exc:
         return {"available": False, "reason": f"Anomaly model could not run: {exc}",
                 "model": "Isolation Forest", "results": []}
