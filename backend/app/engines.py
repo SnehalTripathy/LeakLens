@@ -51,6 +51,11 @@ def parse_upload(filename: str, content: bytes) -> dict[str, Any]:
         raise ValueError("Could not find an amount column or debit/credit columns.")
     if not mapped["date"]:
         raise ValueError("Could not find a transaction date column.")
+    # Positive-only amount columns are directionally ambiguous unless a type or debit/credit field exists.
+    if mapped["amount"] and not mapped["type"] and not (mapped["debit"] or mapped["credit"]):
+        signed_amounts = [_number(v) for v in frame[mapped["amount"]].tolist() if _text(v)]
+        if signed_amounts and all(value >= 0 for value in signed_amounts):
+            raise ValueError("A positive-only Amount column does not identify income versus expense. Add a Type/Direction column, Debit/Credit columns, or use signed amounts with expenses as negative values.")
     accepted: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     seen: set[tuple[Any, ...]] = set()
