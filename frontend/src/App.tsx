@@ -9,7 +9,7 @@ import {
   BrainCircuit, CheckCircle2, ChevronDown, CircleAlert, Download, FileDown,
   FileUp, Lightbulb, LayoutDashboard, Menu, MessageSquareText, Plus,
   RefreshCw, ScanEye, Search, Settings2, ShieldCheck, SlidersHorizontal, Pencil, Trash2,
-  Sparkles, Store, Wallet, X, Zap
+  Sparkles, Store, TrendingUp, Wallet, X, Zap
 } from 'lucide-react';
 import { apiDelete, apiDownload, apiGet, apiPatch, apiPost, apiPut, apiUpload } from './services/api';
 import { transactions as demoRows, type Transaction } from './data/demo';
