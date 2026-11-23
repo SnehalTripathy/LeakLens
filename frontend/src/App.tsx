@@ -17,7 +17,7 @@ import { transactions as demoRows, type Transaction } from './data/demo';
 type Page = 'Overview'|'Transactions'|'Revenue intelligence'|'Expense intelligence'|'Data quality'|'Leak detection'|'Anomaly intelligence'|'Forecasting'|'Business health'|'Recommendations'|'What-if simulator'|'Vendor intelligence'|'Subscription intelligence'|'Alerts centre'|'AI assistant'|'Reports'|'Settings';
 type State = { overview:any; transactions:any[]; expenses:any; revenue:any; comparison:any; budgets:any; quality:any; leaks:any[]; anomalies:any; forecast:any; health:any; recommendations:any[]; vendors:any[]; subscriptions:any[]; alerts:any[] };
 const NAV: {label:Page;icon:any;group:string}[] = [
-  {label:'Overview',icon:LayoutDashboard,group:'WORKSPACE'}, {label:'Transactions',icon:Wallet,group:'WORKSPACE'},
+  {label:'Overview',icon:LayoutDashboard,group:'WORKSPACE'}, {label:'Transactions',icon:Wallet,group:'WORKSPACE'}, {label:'Revenue intelligence',icon:ArrowUpRight,group:'WORKSPACE'},
   {label:'Expense intelligence',icon:Activity,group:'INTELLIGENCE'}, {label:'Leak detection',icon:ScanEye,group:'INTELLIGENCE'},
   {label:'Anomaly intelligence',icon:BrainCircuit,group:'INTELLIGENCE'}, {label:'Forecasting',icon:ArrowUpRight,group:'INTELLIGENCE'},
   {label:'Business health',icon:ShieldCheck,group:'INTELLIGENCE'}, {label:'Recommendations',icon:Lightbulb,group:'INTELLIGENCE'},
@@ -60,7 +60,7 @@ export default function App() {
   const loadData = async (silent=false) => {
     if (!silent) setLoading(true);
     const paths = [
-      '/api/v1/overview','/api/v1/transactions','/api/v1/expenses','/api/v1/leaks',
+      '/api/v1/overview','/api/v1/transactions','/api/v1/expenses','/api/v1/revenue','/api/v1/comparison','/api/v1/data-quality','/api/v1/budgets','/api/v1/leaks',
       '/api/v1/anomalies','/api/v1/forecast','/api/v1/health-score','/api/v1/recommendations',
       '/api/v1/vendors','/api/v1/subscriptions','/api/v1/alerts'
     ];
@@ -70,9 +70,9 @@ export default function App() {
       const value = (i:number) => results[i].status === 'fulfilled' ? results[i].value : null;
       const transactions = value(1)?.transactions || [];
       setData({
-        overview:value(0),transactions,expenses:value(2),leaks:value(3)?.signals || [],
-        anomalies:value(4),forecast:value(5),health:value(6),recommendations:value(7)?.recommendations || [],
-        vendors:value(8)?.vendors || [],subscriptions:value(9)?.subscriptions || [],alerts:value(10)?.alerts || []
+        overview:value(0),transactions,expenses:value(2),revenue:value(3),comparison:value(4),quality:value(5),budgets:value(6),leaks:value(7)?.signals || [],
+        anomalies:value(8),forecast:value(9),health:value(10),recommendations:value(11)?.recommendations || [],
+        vendors:value(12)?.vendors || [],subscriptions:value(13)?.subscriptions || [],alerts:value(14)?.alerts || []
       });
       setApiStatus('online');
     } else {
