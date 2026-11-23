@@ -115,7 +115,7 @@
 - [ ] Cross-browser and real mobile-device visual QA.
 
 ## P10 — Quality and release readiness
-- [x] Backend suite: 21 passing tests covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export and CSV/PDF reports.
+- [x] Backend suite: 26 passing tests in the current isolated verification run, covering service endpoints, imports, financial calculations, duplicate/spike signals, budgets, transaction CRUD, simulator, assistant, health/alert history, import → detect → review → export, public dataset processing and seasonal forecasting.
 - [x] Frontend render/navigation tests.
 - [x] GitHub Actions CI for frontend tests/build and backend tests.
 - [x] npm audit clean on upgraded Vite/Vitest toolchain.
@@ -152,4 +152,4 @@ No third-party API key is required for the current local feature set. A producti
 ## Progress log
 - 2026-11-23: Implemented the core v1 feature set, import preview, sample data, duplicate-payment signals, alert/health histories, naive forecast benchmark and local seed persistence guard. Backend suite reached 20 passing tests; frontend tests/build and strict npm/Python audits passed. Manual browser/accessibility QA, real-world model tuning, production persistence and the no-login deployment decision remain.
 
-- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook in an isolated research runtime; committed non-identifying aggregated outputs and benchmark results. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added seasonal model selection to the app and focused regression tests. Raw workbook and customer/invoice-level rows were not committed.
+- 2026-11-23: Downloaded and processed the full UCI Online Retail II workbook in an isolated research runtime; committed non-identifying aggregated outputs and benchmark results. Seasonal naive achieved 16.95% WAPE on a 13-origin/36-prediction rolling-origin backtest. Added rolling-origin model selection to the app, with revenue and expenses evaluated independently; the in-app engine reproduces the same seasonal WAPE on the public benchmark. Full backend suite: 26 passed in isolated verification. Raw workbook and customer/invoice-level rows were not committed.
