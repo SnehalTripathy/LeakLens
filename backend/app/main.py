@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Literal
 
@@ -17,7 +18,15 @@ from .engines import (anomaly_detection, assistant_answer, expense_intelligence,
                       health_score, leak_signals, overview, parse_upload, recommendations, simulate,
                       revenue_intelligence, budget_performance, period_comparison, data_quality)
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    store.init_db()
+    store.seed_if_empty()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="LeakLens API",
     version="0.2.0",
     description="Local-first financial intelligence, anomaly review and forecasting API.",
@@ -67,12 +76,6 @@ def _signals(rows=None):
     return leak_signals(rows if rows is not None else _rows())
 
 
-@app.on_event("startup")
-def startup():
-    store.init_db()
-    store.seed_if_empty()
-
-
 @app.get("/health", tags=["system"])
 def health():
     return {"status": "ok", "service": "leaklens-api", "version": app.version}
@@ -114,6 +117,7 @@ def create_transaction(payload: TransactionInput):
         raise HTTPException(status_code=422, detail="Date must use ISO format YYYY-MM-DD.") from exc
     row = payload.model_dump()
     row["date"] = parsed
+    row["currency"] = payload.currency.upper()
     result = store.insert_transactions([row])
     if result["duplicates"]:
         raise HTTPException(status_code=409, detail="A matching transaction already exists.")
@@ -130,6 +134,7 @@ def edit_transaction(transaction_id: str, payload: TransactionInput):
         raise HTTPException(status_code=404, detail="Transaction not found.")
     row = payload.model_dump()
     row["date"] = parsed
+    row["currency"] = payload.currency.upper()
     row["source"] = "manual"
     if not store.update_transaction(transaction_id, row):
         raise HTTPException(status_code=409, detail="The edited transaction duplicates another ledger row.")
@@ -294,7 +299,11 @@ def download_report(format: Literal["csv", "pdf"] = "csv"):
         columns = ["date", "description", "vendor", "category", "amount", "type", "currency", "source"]
         writer = csv.DictWriter(buffer, fieldnames=columns)
         writer.writeheader()
-        writer.writerows([{k: row.get(k, "") for k in columns} for row in rows])
+        def safe_cell(value):
+            if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@", "\\t", "\\r")):
+                return "'" + value
+            return value
+        writer.writerows([{k: safe_cell(row.get(k, "")) for k in columns} for row in rows])
         output = io.BytesIO(buffer.getvalue().encode("utf-8"))
         return StreamingResponse(output, media_type="text/csv",
                                  headers={"Content-Disposition": "attachment; filename=leaklens-transactions.csv"})
