@@ -108,7 +108,7 @@ def main() -> None:
             page.add_script_tag(path=str(axe_path))
             axe = page.evaluate("""async () => {
               const result = await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a','wcag2aa','wcag21a','wcag21aa']}});
-              return result.violations.map(v => ({id:v.id, impact:v.impact, description:v.description, nodes:v.nodes.length}));
+              return result.violations.map(v => ({id:v.id, impact:v.impact, description:v.description, nodes:v.nodes.map(n => ({target:n.target, html:n.html.slice(0,180), summary:n.failureSummary}))}));
             }""")
             critical = [item for item in axe if item["impact"] == "critical"]
             print("Axe WCAG findings:", axe)
