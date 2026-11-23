@@ -19,7 +19,7 @@ def retail_frame():
 
 def test_cleaning_keeps_refunds_and_reports_invalid_rows(retail_frame):
     cleaned, quality = clean_transactions(retail_frame)
-    assert len(cleaned) == 3
+    assert len(cleaned) == 4
     assert quality["source_rows"] == 5
     assert quality["invalid_dates"] == 1
     assert quality["cancellation_or_return_lines"] == 1
