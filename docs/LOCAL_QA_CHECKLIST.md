@@ -55,11 +55,20 @@ Open http://localhost:5173. The header should say **Local API connected**. The f
 - [ ] Ask the **AI assistant** a question about vendors, revenue or unusual expenses and inspect supporting evidence.
 - [ ] Download the CSV transaction report and PDF summary; open both files and verify totals/content.
 
-## 6. Persistence, responsive and privacy checks
+## 6. Accounting, branch and governance checks
+- [ ] In **Settings**, select cash or accrual view and configure a non-calendar fiscal-year start.
+- [ ] Import a file containing `service_date`, `branch`, `account_code` and `account_name`; verify service-date accrual views and branch totals.
+- [ ] Add a category-to-account mapping and verify it applies to matching existing and newly imported rows.
+- [ ] In **Subscription intelligence**, enter a known contract amount/cadence and compare it with inferred recurring charges. Treat differences as review prompts, not proof of overbilling.
+- [ ] In **Alerts centre**, classify a review as confirmed issue, false positive or needs more evidence; inspect the qualified reviewed-subset metric and note that recall is unavailable without labelled unflagged transactions.
+
+## 7. Persistence, responsive and privacy checks
 - [ ] Stop and restart the backend; confirm imported transactions and alert/budget history remain.
 - [ ] Use a disposable test workspace if testing deletion of every transaction. After clearing it, restart the backend; the Northstar demo data should not be reseeded.
 - [ ] Check the layout at desktop, tablet and mobile widths; verify the sidebar, modals, charts and tables remain usable.
 - [ ] Complete a keyboard-only pass through navigation, filters, modals and alert actions.
+- [ ] Check reduced-motion behavior and keyboard focus visibility. CI runs axe WCAG checks and a mobile overflow smoke check; manual accessibility review is still required.
+- [ ] For a disposable workspace only, set `LEAKLENS_ENABLE_LOCAL_ADMIN=true`, create a backup, restore it, and test confirmed deletion/manual retention. Return the setting to `false` afterward.
 - [ ] Keep the API bound to localhost for local use. Do not expose this unauthenticated single-workspace backend to the public internet.
 
 ## Important
