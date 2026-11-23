@@ -110,9 +110,9 @@ def main() -> None:
               const result = await axe.run(document, {runOnly: {type: 'tag', values: ['wcag2a','wcag2aa','wcag21a','wcag21aa']}});
               return result.violations.map(v => ({id:v.id, impact:v.impact, description:v.description, nodes:v.nodes.map(n => ({target:n.target, html:n.html.slice(0,180), summary:n.failureSummary}))}));
             }""")
-            critical = [item for item in axe if item["impact"] == "critical"]
+            blocking = [item for item in axe if item["impact"] in ("critical", "serious")]
             print("Axe WCAG findings:", axe)
-            assert not critical, f"Critical accessibility violations: {critical}"
+            assert not blocking, f"Serious or critical accessibility violations: {blocking}"
 
             # Responsive layout and lightweight performance budget.
             page.set_viewport_size({"width": 390, "height": 844})
