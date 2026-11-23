@@ -109,3 +109,35 @@ def test_positive_only_import_requires_transaction_direction(tmp_path):
         response = client.post("/api/v1/import/preview", files={"file": ("ambiguous.csv", csv, "text/csv")})
         assert response.status_code == 400
         assert "does not identify income versus expense" in response.json()["detail"]
+
+def test_import_detect_review_and_report_end_to_end(tmp_path):
+    setup_workspace(tmp_path)
+    with TestClient(app) as client:
+        csv = (
+            "date,description,vendor,category,amount,type,currency\n"
+            "2026-06-12,Recurring infrastructure,Cloud Test Vendor,Technology,100,expense,USD\n"
+            "2026-07-12,Recurring infrastructure,Cloud Test Vendor,Technology,100,expense,USD\n"
+            "2026-08-12,Recurring infrastructure,Cloud Test Vendor,Technology,100,expense,USD\n"
+            "2026-09-12,Recurring infrastructure,Cloud Test Vendor,Technology,100,expense,USD\n"
+            "2026-10-12,Recurring infrastructure,Cloud Test Vendor,Technology,100,expense,USD\n"
+            "2026-11-12,Unusual infrastructure charge,Cloud Test Vendor,Technology,250,expense,USD\n"
+        ).encode()
+        preview = client.post("/api/v1/import/preview", files={"file": ("e2e.csv", csv, "text/csv")})
+        assert preview.status_code == 200
+        assert preview.json()["estimated_new_rows"] == 6
+        imported = client.post("/api/v1/import", files={"file": ("e2e.csv", csv, "text/csv")})
+        assert imported.status_code == 200
+        assert imported.json()["inserted"] == 6
+
+        leaks = client.get("/api/v1/leaks").json()["signals"]
+        signal = next(item for item in leaks if item["kind"] == "vendor-spike" and item["subject"] == "Cloud Test Vendor")
+        assert signal["estimated_exposure"] == 150
+
+        reviewed = client.patch(f"/api/v1/alerts/{signal['id']}", json={"status": "reviewed"})
+        assert reviewed.status_code == 200
+        history = client.get(f"/api/v1/alerts/{signal['id']}/history").json()["history"]
+        assert history[-1]["status"] == "reviewed"
+
+        report = client.get("/api/v1/reports?format=csv")
+        assert report.status_code == 200
+        assert b"Cloud Test Vendor" in report.content
