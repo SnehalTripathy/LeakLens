@@ -87,7 +87,7 @@ def main() -> None:
 
             # Detect and review the imported vendor signal.
             page.get_by_role("button", name="Leak detection").click()
-            page.get_by_text("Release Smoke Vendor").wait_for(timeout=15000)
+            page.get_by_text("Release Smoke Vendor").first.wait_for(timeout=15000)
             page.get_by_role("button", name="Alerts centre").click()
             review_button = page.get_by_role("button", name="Mark reviewed").first
             review_button.wait_for(timeout=15000)
