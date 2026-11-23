@@ -451,7 +451,7 @@ def forecast(rows: list[dict[str, Any]], horizon: int = 3) -> dict[str, Any]:
                 residual = y[1:] - y[:-1]
             elif chosen == "moving_average_3":
                 prediction = max(0.0, float(np.mean(y[-3:])))
-                residual = y[3:] - np.convolve(y, np.ones(3) / 3, mode="valid")
+                residual = np.asarray([y[i] - float(np.mean(y[i - 3:i])) for i in range(3, len(y))])
             else:
                 coef = np.polyfit(x, y, 1)
                 prediction = max(0.0, float(np.polyval(coef, target_index)))
