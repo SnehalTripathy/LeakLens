@@ -22,7 +22,7 @@ from sklearn.linear_model import LinearRegression
 UCI_URL = "https://archive.ics.uci.edu/static/public/502/online%2Bretail%2Bii.zip"
 CITATION = "Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CG6D."
 LICENSE = "CC BY 4.0"
-REQUIRED = {"Invoice", "StockCode", "Description", "Quantity", "Price", "Customer ID", "Country"}
+REQUIRED = {"Invoice", "StockCode", "Description", "Quantity", "InvoiceDate", "Price", "Customer ID", "Country"}
 
 
 def download_dataset(destination: Path) -> Path:
