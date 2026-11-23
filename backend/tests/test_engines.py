@@ -108,6 +108,10 @@ def test_forecast_requires_four_months_and_returns_three_steps():
     assert len(result["forecast"]) == 3
     assert all(item["income"] >= 0 and item["expenses"] >= 0 for item in result["forecast"])
     assert result["backtest_mae"] is not None
+    assert result["backtest_naive_mae"] is not None
+    assert result["backtest_periods"] == 2
+    assert result["backtest_observations"] == 4
+    assert set(result["backtest_by_metric"]) == {"income", "expenses"}
 
 
 def test_simulator_uses_last_three_month_baseline_and_assumptions():
