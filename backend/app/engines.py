@@ -125,6 +125,14 @@ def _fmt_month(key: str) -> str:
     return pd.Period(key, freq="M").strftime("%b %Y")
 
 
+def _primary_currency(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not rows:
+        return rows
+    counts = Counter(r.get("currency", "USD") for r in rows)
+    primary = counts.most_common(1)[0][0]
+    return [r for r in rows if r.get("currency", "USD") == primary]
+
+
 def overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if not rows:
         return {"currency": "USD", "revenue": 0, "expenses": 0, "net": 0, "profit_margin": 0,
@@ -159,6 +167,7 @@ def overview(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def expense_intelligence(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
     expenses = [r for r in rows if r["type"] == "expense"]
     if not expenses:
         return {"total": 0, "fixed_estimate": 0, "variable_estimate": 0, "categories": [], "vendors": [], "recurring": []}
@@ -194,6 +203,7 @@ def _group(rows: list[dict[str, Any]], key: str) -> dict[str, list[dict[str, Any
 
 
 def leak_signals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = _primary_currency(rows)
     expenses = [r for r in rows if r["type"] == "expense"]
     signals: list[dict[str, Any]] = []
     # Large individual transaction compared with the same vendor's past activity.
@@ -275,6 +285,7 @@ def _signal(kind: str, subject: str, title: str, detail: str, exposure: float,
 
 
 def anomaly_detection(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = _primary_currency(rows)
     expenses = [r for r in rows if r["type"] == "expense"]
     if len(expenses) < 12:
         return {"available": False, "reason": "At least 12 expense transactions are required for anomaly modelling.",
