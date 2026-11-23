@@ -25,7 +25,7 @@ LeakLens is a financial intelligence workspace for business transaction analysis
 - Data-grounded assistant, data-quality checks and CSV/PDF reports.
 
 ## Local QA and sample import
-- Sample import file: [`samples/sample-transactions.csv`](../samples/sample-transactions.csv)
+- Sample import file: [`samples/sample-transactions.csv`](samples/sample-transactions.csv)
 - Manual browser, responsive, import, alert, report and persistence checks: [`docs/LOCAL_QA_CHECKLIST.md`](docs/LOCAL_QA_CHECKLIST.md)
 
 ## Repository structure
@@ -49,7 +49,7 @@ Open http://localhost:5173.
 ```bash
 cd backend
 python -m venv .venv
-# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+# Windows PowerShell: .venv\Scripts\Activate.ps1
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
@@ -72,6 +72,7 @@ npm audit
 ```
 ```bash
 cd backend
+python -m pip install pip-audit
 pip-audit -r requirements.txt
 ```
 
