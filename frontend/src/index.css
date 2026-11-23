@@ -143,3 +143,11 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .table-actions button{width:25px;height:25px;display:grid;place-items:center;border:1px solid #3b4032;border-radius:5px;background:#1b2015;color:#c6f432;transition:.18s}
 .table-actions button:hover{background:#c6f432;color:#0b0b0c}
 @media(max-width:700px){.budget-form{grid-template-columns:1fr}.budget-list{grid-template-columns:1fr}}
+
+
+.date-filter{height:36px;display:flex;align-items:center;gap:6px;padding:0 8px;border:1px solid #343731;border-radius:7px;background:#151715;color:#8b8f82;font-size:8px;white-space:nowrap}
+.date-filter input{width:115px;min-width:0;border:0;outline:0;background:transparent;color:#e5e8df;font:9px 'DM Mono';color-scheme:dark}
+.toolbar{flex-wrap:wrap}
+.toolbar .search{min-width:220px}
+.anomaly-score small+small{font-size:7px;color:#8b8f82;white-space:nowrap}
+@media(max-width:780px){.date-filter{flex:1;justify-content:space-between}.date-filter input{width:130px}}
