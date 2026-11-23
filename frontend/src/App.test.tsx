@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
+
+afterEach(() => cleanup());
 
 describe('LeakLens workspace', () => {
   it('opens directly into the dashboard without an authentication screen', () => {
@@ -12,7 +14,7 @@ describe('LeakLens workspace', () => {
 
   it('navigates to transaction management and exposes search', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: /Transactions/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Transactions$/ }));
     expect(screen.getByPlaceholderText(/Search transactions/i)).toBeInTheDocument();
     expect(screen.getByText(/LEDGER MANAGEMENT/)).toBeInTheDocument();
   });
