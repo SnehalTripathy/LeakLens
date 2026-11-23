@@ -180,6 +180,7 @@ export default function App() {
           {page==='Overview'&&<motion.div key={page} initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
             <Heading eyebrow="FINANCIAL OVERVIEW" title={<>See the bigger <em>picture.</em></>} subtitle="Your financial pulse, without the noise." actions={<><button className="btn secondary" onClick={()=>download('csv')}><Download size={15}/>Export data</button><button className="btn primary" onClick={openFile}><FileUp size={15}/>Import transactions</button></>}/>
             {importSummary&&<div className="import-note"><ShieldCheck size={15}/>{importSummary}</div>}
+            {Object.keys(data.overview?.other_currencies||{}).length>1&&<div className="warning-note"><AlertTriangle size={15}/> This workspace contains multiple currencies. Headline totals and financial models use {currency} only; other currencies are not converted or combined.</div>}
             {apiStatus==='offline'&&<div className="warning-note"><AlertTriangle size={15}/> The API is offline. The screen is showing preview transactions; calculations, imports and intelligence require the backend to be running.</div>}
             <div className="metrics">
               <Metric label="Total revenue" value={fmt(data.overview?.revenue ?? totals.income,currency)} trend={data.overview?'▲ '+data.overview.profit_margin+'% margin':'Preview'} note="recorded income" icon={ArrowUpRight}/>
