@@ -151,7 +151,7 @@ def delete_transaction(transaction_id: str):
 @app.post("/api/v1/import", tags=["data"])
 async def import_transactions(file: UploadFile = File(...)):
     filename = file.filename or "upload.csv"
-    content = await file.read()
+    content = await file.read(10 * 1024 * 1024 + 1)
     try:
         parsed = parse_upload(filename, content)
     except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -231,7 +231,7 @@ def get_health_score():
 @app.get("/api/v1/recommendations", tags=["intelligence"])
 def get_recommendations():
     rows = _rows()
-    items = recommendations(rows, _signals(rows))
+    items = recommendations(rows, _signals(rows), store.get_budgets())
     return {"count": len(items), "recommendations": items}
 
 
