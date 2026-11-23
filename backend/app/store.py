@@ -33,6 +33,13 @@ def fingerprint(row: dict[str, Any]) -> str:
 def init_db() -> None:
     with connect() as db:
         db.execute("""
+            CREATE TABLE IF NOT EXISTS app_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        db.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id TEXT PRIMARY KEY,
                 fingerprint TEXT NOT NULL UNIQUE,
@@ -128,12 +135,21 @@ def _seed_rows() -> list[dict[str, Any]]:
     return rows
 
 
-def seed_if_empty() -> None:
+def seed_if_empty(force: bool = False) -> None:
     with connect() as db:
+        marker = db.execute("SELECT value FROM app_meta WHERE key='demo_seeded'").fetchone()
         count = db.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
-    if count:
-        return
+        if marker and not force:
+            return
+        if count and not force:
+            # Existing workspaces with transactions predate the seed marker; do not overwrite them.
+            db.execute("INSERT OR REPLACE INTO app_meta(key,value,updated_at) VALUES(?,?,?)",
+                       ("demo_seeded", "existing_workspace", datetime.now(timezone.utc).isoformat()))
+            return
     insert_transactions(_seed_rows())
+    with connect() as db:
+        db.execute("INSERT OR REPLACE INTO app_meta(key,value,updated_at) VALUES(?,?,?)",
+                   ("demo_seeded", "true", datetime.now(timezone.utc).isoformat()))
 
 
 def insert_transactions(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
