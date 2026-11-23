@@ -16,7 +16,7 @@ Run from the repository root:
 
 ```powershell
 cd backend
-python scripts/benchmark_uci_online_retail_ii.py --download
+python -m app.public_dataset --download
 ```
 
 Or pass a workbook already downloaded from UCI:
