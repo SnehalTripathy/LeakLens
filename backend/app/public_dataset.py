@@ -9,7 +9,6 @@ not supplier expenses or confirmed fraud labels.
 
 import argparse
 import json
-import math
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -104,6 +103,9 @@ def aggregate_outputs(data: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
     monthly["net_sales"] = monthly["net_sales"].round(2)
     monthly["gross_sales"] = monthly["gross_sales"].round(2)
     monthly["refunds"] = monthly["refunds"].round(2)
+    if not monthly.empty:
+        full_months = pd.period_range(monthly["month"].min(), monthly["month"].max(), freq="M").astype(str)
+        monthly = monthly.set_index("month").reindex(full_months, fill_value=0).rename_axis("month").reset_index()
     monthly = monthly.sort_values("month").reset_index(drop=True)
 
     country = data.groupby("Country", as_index=False).agg(
@@ -137,7 +139,7 @@ def _forecast_one(train: np.ndarray, horizon: int, method: str) -> np.ndarray:
         x = np.arange(len(train)).reshape(-1, 1)
         model = LinearRegression().fit(x, train)
         future = np.arange(len(train), len(train) + horizon).reshape(-1, 1)
-        return np.maximum(0, model.predict(future))
+        return model.predict(future)
     raise ValueError(f"Unknown forecast method: {method}")
 
 
