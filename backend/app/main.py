@@ -119,10 +119,11 @@ def create_transaction(payload: TransactionInput):
     row = payload.model_dump()
     row["date"] = parsed
     row["currency"] = payload.currency.upper()
+    row["id"] = store.fingerprint(row)[:16]
     result = store.insert_transactions([row])
     if result["duplicates"]:
         raise HTTPException(status_code=409, detail="A matching transaction already exists.")
-    return {"created": True, "transaction": store.list_transactions()[0]}
+    return {"created": True, "transaction": store.get_transaction(row["id"])}
 
 
 @app.put("/api/v1/transactions/{transaction_id}", tags=["transactions"])
