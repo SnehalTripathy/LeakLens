@@ -18,3 +18,9 @@ venv/
 uploads/
 .data/
 backend/.data/
+
+# Public research data and generated benchmark outputs
+/data/raw/
+/artifacts/
+backend/data/raw/
+backend/artifacts/
