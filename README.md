@@ -18,7 +18,7 @@ LeakLens is a financial intelligence workspace for business transaction analysis
 - Transaction import preview, validation, deduplication, create/edit/delete, search and filters.
 - Rule-based leak signals with evidence, potential exposure and alert review workflow.
 - Isolation Forest + Local Outlier Factor anomaly comparison and contextual explanations.
-- Revenue/expense trend forecasts with backtest MAE and indicative uncertainty bands.
+- Revenue/expense forecasts with linear, last-value, moving-average and 12-month seasonal-naive model selection (seasonality requires 24 contiguous months), backtest metrics and indicative uncertainty bands.
 - Transparent six-dimension health score, daily score history and evidence-linked recommendations.
 - What-if financial simulator, vendor and recurring subscription insights.
 - Alert lifecycle with reopen and status history.
