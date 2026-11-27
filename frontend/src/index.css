@@ -274,3 +274,24 @@ aside.sidebar,
 .sidebar .side-promo p{opacity:.88}
 .sidebar .profile{border-top-color:#454b40}
 .sidebar .mobile-close{color:#c6f432}
+
+/* Subtle branded wave artwork behind every page's content */
+.content{
+  position:relative;
+  isolation:isolate;
+}
+.content::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  pointer-events:none;
+  inset:0;
+  opacity:.72;
+  background-image:
+    radial-gradient(ellipse at 88% 7%, rgba(198,244,50,.10) 0, rgba(198,244,50,0) 34%),
+    radial-gradient(ellipse at 7% 88%, rgba(198,244,50,.055) 0, rgba(198,244,50,0) 30%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='520' viewBox='0 0 760 520' fill='none'%3E%3Cg stroke='%23C6F432' stroke-opacity='.12' stroke-width='1'%3E%3Cpath d='M-80 115C65 15 165 15 300 115S535 215 840 75'/%3E%3Cpath d='M-80 145C65 45 165 45 300 145S535 245 840 105'/%3E%3Cpath d='M-80 175C65 75 165 75 300 175S535 275 840 135'/%3E%3Cpath d='M-80 205C65 105 165 105 300 205S535 305 840 165'/%3E%3Cpath d='M-80 405C65 305 165 305 300 405S535 505 840 365'/%3E%3Cpath d='M-80 435C65 335 165 335 300 435S535 535 840 395'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:no-repeat,no-repeat,repeat;
+  background-size:100% 100%,100% 100%,760px 520px;
+  background-position:center,center,center top;
+}
