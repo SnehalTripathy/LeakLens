@@ -368,9 +368,11 @@ aside.sidebar,
     radial-gradient(ellipse 38% 23% at 78% 13%,rgba(198,244,50,.25) 0%,rgba(198,244,50,.10) 42%,transparent 76%),
     radial-gradient(ellipse 34% 26% at 18% 42%,rgba(38,220,160,.20) 0%,rgba(38,220,160,.08) 48%,transparent 78%),
     radial-gradient(ellipse 42% 25% at 82% 72%,rgba(70,190,130,.18) 0%,rgba(70,190,130,.07) 48%,transparent 80%),
-    radial-gradient(ellipse 30% 20% at 42% 94%,rgba(198,244,50,.16) 0%,transparent 78%);
+    radial-gradient(ellipse 30% 20% at 42% 94%,rgba(198,244,50,.16) 0%,transparent 78%),
+    linear-gradient(116deg,transparent 0%,transparent 43%,rgba(198,244,50,.12) 49%,transparent 51%,transparent 100%),
+    linear-gradient(116deg,transparent 0%,transparent 59%,rgba(198,244,50,.09) 64%,transparent 66%,transparent 100%);
   filter:blur(30px) saturate(1.35);
-  background-size:145% 145%;
+  background-size:145% 145%,145% 145%,145% 145%,145% 145%,100% 100%,100% 100%;
   animation:leaklens-aurora-flow 16s ease-in-out infinite alternate;
 }
 @keyframes leaklens-aurora-flow{
