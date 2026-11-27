@@ -203,3 +203,17 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .sidebar::-webkit-scrollbar-track{background:#e5e7eb}
 .sidebar::-webkit-scrollbar-thumb{background:#9ca3af;border-radius:8px;border:2px solid #e5e7eb}
 .sidebar::-webkit-scrollbar-thumb:hover{background:#6b7280}
+
+/* Strong override for the portfolio navigation rail */
+.shell > aside.sidebar{
+  background-color:#D1D5DB !important;
+  height:100vh;
+  max-height:100vh;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  scrollbar-width:thin;
+  scrollbar-color:#6B7280 #D1D5DB;
+}
+.shell > aside.sidebar::-webkit-scrollbar{width:9px}
+.shell > aside.sidebar::-webkit-scrollbar-track{background:#D1D5DB}
+.shell > aside.sidebar::-webkit-scrollbar-thumb{background:#6B7280;border-radius:8px;border:2px solid #D1D5DB}
