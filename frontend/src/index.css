@@ -188,3 +188,18 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .feedback-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid #292c27}
 .feedback-actions small{width:100%;color:#8b8f82;font-size:8px;letter-spacing:.4px}
 @media(max-width:520px){.settings-form .form-row{grid-template-columns:1fr}.feedback-actions .btn{flex:1 1 100%}}
+
+/* Portfolio sidebar: muted grey surface and independent vertical scrolling */
+.sidebar{
+  height:100vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  background:#e5e7eb;
+  scrollbar-width:thin;
+  scrollbar-color:#9ca3af #e5e7eb;
+}
+.sidebar>*{flex-shrink:0}
+.sidebar::-webkit-scrollbar{width:7px}
+.sidebar::-webkit-scrollbar-track{background:#e5e7eb}
+.sidebar::-webkit-scrollbar-thumb{background:#9ca3af;border-radius:8px;border:2px solid #e5e7eb}
+.sidebar::-webkit-scrollbar-thumb:hover{background:#6b7280}
