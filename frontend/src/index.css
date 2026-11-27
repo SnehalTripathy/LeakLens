@@ -295,3 +295,59 @@ aside.sidebar,
   background-size:100% 100%,100% 100%,760px 520px;
   background-position:center,center,center top;
 }
+
+/* LeakLens global visual system: flowing waves + animated light beams.
+   The content canvas covers every route; card surfaces receive their own
+   restrained pattern so no page section is left visually blank. */
+.content{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+.content::before,
+.content::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+}
+.content::before{
+  opacity:.52;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='620' viewBox='0 0 900 620' fill='none'%3E%3Cg stroke='%23C6F432' stroke-opacity='.20' stroke-width='1'%3E%3Cpath d='M-120 120C40 10 180 10 340 120S650 230 1020 70'/%3E%3Cpath d='M-120 150C40 40 180 40 340 150S650 260 1020 100'/%3E%3Cpath d='M-120 180C40 70 180 70 340 180S650 290 1020 130'/%3E%3Cpath d='M-120 210C40 100 180 100 340 210S650 320 1020 160'/%3E%3Cpath d='M-120 430C40 320 180 320 340 430S650 540 1020 380'/%3E%3Cpath d='M-120 460C40 350 180 350 340 460S650 570 1020 410'/%3E%3Cpath d='M-120 490C40 380 180 380 340 490S650 600 1020 440'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:repeat;
+  background-size:900px 620px;
+  animation:leaklens-wave-drift 48s linear infinite;
+}
+.content::after{
+  opacity:.25;
+  background-image:
+    linear-gradient(116deg,transparent 0%,transparent 43%,rgba(198,244,50,.12) 49%,transparent 51%,transparent 100%),
+    linear-gradient(116deg,transparent 0%,transparent 59%,rgba(198,244,50,.09) 64%,transparent 66%,transparent 100%),
+    radial-gradient(ellipse at 80% 15%,rgba(198,244,50,.12),transparent 38%);
+  background-size:100% 100%,100% 100%,100% 100%;
+  animation:leaklens-beam-breathe 12s ease-in-out infinite alternate;
+}
+@keyframes leaklens-wave-drift{
+  from{background-position:0 0}
+  to{background-position:180px 0}
+}
+@keyframes leaklens-beam-breathe{
+  from{opacity:.12;transform:translateX(-1%)}
+  to{opacity:.30;transform:translateX(1%)}
+}
+/* Add a faint wave/beam texture to the actual content surfaces as well. */
+.panel,.metric,.signal-banner,.module,.report-card,.recommendation,
+.health-component,.simulator,.chat-window,.settings-list>div,
+.anomaly-row,.health-score,.model-summary,.report-grid>div,
+.scenario-results>div,.feature-list>div,.side-promo{
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='180' viewBox='0 0 360 180' fill='none'%3E%3Cg stroke='%23C6F432' stroke-opacity='.10' stroke-width='1'%3E%3Cpath d='M-30 55C45 5 100 5 175 55S300 105 390 35'/%3E%3Cpath d='M-30 75C45 25 100 25 175 75S300 125 390 55'/%3E%3Cpath d='M-30 95C45 45 100 45 175 95S300 145 390 75'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(120deg,transparent 0%,rgba(198,244,50,.025) 48%,transparent 70%);
+  background-repeat:no-repeat;
+  background-position:right top,left bottom;
+  background-size:360px 180px,100% 100%;
+}
+@media(prefers-reduced-motion:reduce){
+  .content::before,.content::after{animation:none}
+}
