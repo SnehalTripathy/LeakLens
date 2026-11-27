@@ -40,3 +40,9 @@ Anomaly flags are decision-support signals, not proof of fraud or wrongdoing. Fo
 ## Live Demo
 
 The hosted demo uses fictional sample financial data and is intended for exploration. **Do not enter real or sensitive financial information.**
+
+## Project Objective
+
+LeakLens explores how data analytics can make financial oversight more proactive and accessible. By bringing transaction visibility, anomaly signals, forecasting, and scenario analysis together, the project aims to help users move beyond simply tracking what has been spent and towards understanding where attention may be needed next.
+
+*Built to turn financial data into clearer insights and more confident decisions.*
