@@ -1,0 +1,33 @@
+# Render Blueprint for the LeakLens public portfolio demo.
+# This uses an ephemeral SQLite database seeded with fictional sample data.
+# Do not use this configuration for real financial records or production users.
+
+services:
+  - type: web
+    name: leaklens-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: LEAKLENS_CORS_ORIGINS
+        value: "*"
+      - key: LEAKLENS_ENABLE_LOCAL_ADMIN
+        value: "false"
+
+  - type: web
+    name: leaklens-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://leaklens-api.onrender.com
