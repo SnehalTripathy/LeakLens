@@ -217,3 +217,11 @@ button:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
 .shell > aside.sidebar::-webkit-scrollbar{width:9px}
 .shell > aside.sidebar::-webkit-scrollbar-track{background:#D1D5DB}
 .shell > aside.sidebar::-webkit-scrollbar-thumb{background:#6B7280;border-radius:8px;border:2px solid #D1D5DB}
+
+/* Enforce the grey surface across the complete fixed sidebar */
+aside.sidebar,
+.shell > aside.sidebar,
+.sidebar.open{
+  background-color:#e5e7eb !important;
+  background-image:none !important;
+}
