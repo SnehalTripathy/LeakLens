@@ -7,8 +7,8 @@ afterEach(() => cleanup());
 describe('LeakLens workspace', () => {
   it('opens directly into the dashboard without an authentication screen', () => {
     render(<App />);
-    expect(screen.getByText('Northstar Studio')).toBeInTheDocument();
-    expect(screen.getByText(/See the bigger/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /See the bigger picture/i })).toBeInTheDocument();
+    expect(screen.getByText(/FINANCIAL OVERVIEW/)).toBeInTheDocument();
   });
 
   it('navigates to transaction management and exposes search', async () => {
@@ -17,8 +17,6 @@ describe('LeakLens workspace', () => {
     expect(await screen.findByPlaceholderText(/Search transactions/i)).toBeInTheDocument();
     expect(screen.getByText(/LEDGER MANAGEMENT/)).toBeInTheDocument();
   });
-});
-
 
   it('reaches every implemented workspace module from the sidebar', () => {
     render(<App />);
@@ -35,3 +33,4 @@ describe('LeakLens workspace', () => {
       expect(link.className).toContain('selected');
     }
   });
+});
